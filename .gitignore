@@ -38,6 +38,8 @@ yarn-error.log*
 next-env.d.ts
 *.tsbuildinfo
 /dist/
+/.offline-build/
+/.pages/
 /.wrangler/
 /.pnpm-store/
 /outputs/
