@@ -1,0 +1,1223 @@
+import type {
+  Capability,
+  CardCategory,
+  CardDef,
+  CommentDef,
+  EventDef,
+  Metric,
+  ResolutionRoute,
+  RoleDef,
+  StageId,
+} from "./types";
+import {
+  EXPANSION_CARDS,
+  EXPANSION_COMMENTS,
+  EXPANSION_EVENTS,
+  EXPANSION_ROLES,
+  RELICS as EXPANSION_RELICS,
+  STARTING_DECKS as EXPANSION_STARTING_DECKS,
+} from "./expansion";
+import {
+  MEGA_CARDS,
+  MEGA_COMMENTS,
+  MEGA_EVENTS,
+  MEGA_RELICS,
+  MEGA_ROLES,
+  MEGA_STARTING_DECKS,
+} from "./megaExpansion";
+
+export const METRICS: Metric[] = [
+  "novelty",
+  "evidence",
+  "clarity",
+  "reproducibility",
+];
+
+export const CAPABILITIES: Capability[] = [
+  "comparison", "ablation", "statistics", "uncertainty", "visualization", "protocol",
+  "dataIntegrity", "externalValidation", "robustness", "calibration", "efficiency",
+  "clinicalRelevance", "fairness", "causalReasoning", "reproducibility", "codeRelease",
+  "documentation", "claimFraming", "literature", "responseWriting", "ethics", "formatting",
+  "theory", "interpretability",
+];
+
+export const CAPABILITY_META: Record<Capability, { label: string; labelEn: string; icon: string }> = {
+  comparison: { label: "基线比较", labelEn: "Baseline comparison", icon: "⇄" },
+  ablation: { label: "组件消融", labelEn: "Component ablation", icon: "−" },
+  statistics: { label: "统计检验", labelEn: "Statistical testing", icon: "Σ" },
+  uncertainty: { label: "不确定性", labelEn: "Uncertainty", icon: "±" },
+  visualization: { label: "可视化", labelEn: "Visualization", icon: "▥" },
+  protocol: { label: "实验协议", labelEn: "Protocol", icon: "¶" },
+  dataIntegrity: { label: "数据审计", labelEn: "Data integrity", icon: "◇" },
+  externalValidation: { label: "外部验证", labelEn: "External validation", icon: "◎" },
+  robustness: { label: "鲁棒性", labelEn: "Robustness", icon: "⬡" },
+  calibration: { label: "校准", labelEn: "Calibration", icon: "⌁" },
+  efficiency: { label: "效率分析", labelEn: "Efficiency", icon: "⚡" },
+  clinicalRelevance: { label: "临床价值", labelEn: "Clinical relevance", icon: "+" },
+  fairness: { label: "公平性", labelEn: "Fairness", icon: "=" },
+  causalReasoning: { label: "因果论证", labelEn: "Causal reasoning", icon: "↝" },
+  reproducibility: { label: "可复现流程", labelEn: "Reproducible workflow", icon: "⌘" },
+  codeRelease: { label: "代码开放", labelEn: "Code release", icon: "</>" },
+  documentation: { label: "方法文档", labelEn: "Documentation", icon: "▤" },
+  claimFraming: { label: "主张定位", labelEn: "Claim framing", icon: "✦" },
+  literature: { label: "文献定位", labelEn: "Literature positioning", icon: "Z" },
+  responseWriting: { label: "逐点回复", labelEn: "Point-by-point response", icon: "✎" },
+  ethics: { label: "伦理合规", labelEn: "Ethics & compliance", icon: "§" },
+  formatting: { label: "终稿格式", labelEn: "Camera-ready format", icon: "Aa" },
+  theory: { label: "理论解释", labelEn: "Theory", icon: "∴" },
+  interpretability: { label: "可解释分析", labelEn: "Interpretability", icon: "?" },
+};
+
+const TAG_CAPABILITIES: Record<string, Capability[]> = {
+  comparison: ["comparison"], baseline: ["comparison"], recent: ["comparison", "literature"],
+  ablation: ["ablation"], component: ["ablation"], statistics: ["statistics"], significance: ["statistics"], power: ["statistics", "uncertainty"], uncertainty: ["uncertainty"],
+  figure: ["visualization"], clarity: ["visualization", "documentation"], formatting: ["formatting"], camera: ["formatting"], summary: ["documentation"],
+  split: ["dataIntegrity", "protocol"], leakage: ["dataIntegrity"], audit: ["dataIntegrity"], data: ["dataIntegrity"], labels: ["dataIntegrity"],
+  external: ["externalValidation"], generalization: ["externalValidation"], datasets: ["externalValidation"],
+  robustness: ["robustness"], parameters: ["robustness"], mask: ["robustness"], calibration: ["calibration"],
+  efficiency: ["efficiency"], compute: ["efficiency"], clinical: ["clinicalRelevance"], fairness: ["fairness"], causal: ["causalReasoning"],
+  reproducibility: ["reproducibility"], seed: ["reproducibility", "protocol"], code: ["codeRelease", "reproducibility"], repo: ["codeRelease"],
+  writing: ["responseWriting"], rebuttal: ["responseWriting"], claims: ["claimFraming"], novelty: ["claimFraming", "literature"], literature: ["literature"], citation: ["literature"],
+  ethics: ["ethics"], license: ["ethics"], theory: ["theory"], interpretability: ["interpretability"], analysis: ["interpretability"], error: ["interpretability"],
+};
+
+const METRIC_CAPABILITIES: Record<Metric, Capability[]> = {
+  novelty: ["claimFraming", "literature", "theory"],
+  evidence: ["statistics", "comparison", "robustness"],
+  clarity: ["visualization", "documentation", "responseWriting"],
+  reproducibility: ["reproducibility", "protocol", "codeRelease"],
+};
+
+function uniqueCapabilities(values: Capability[]) {
+  return [...new Set(values)];
+}
+
+export function inferCardCapabilities(card: CardDef): Partial<Record<Capability, number>> {
+  if (card.provides && Object.keys(card.provides).length > 0) return card.provides;
+  const tagged = uniqueCapabilities(card.tags.flatMap((tag) => TAG_CAPABILITIES[tag] ?? []));
+  const statCaps = (Object.entries(card.delta?.stats ?? {}) as [Metric, number][])
+    .filter(([, value]) => value > 0)
+    .flatMap(([metric]) => METRIC_CAPABILITIES[metric].slice(0, 1));
+  const fallback: Record<CardCategory, Capability> = {
+    experiment: "robustness", writing: "responseWriting", rigor: "reproducibility",
+    support: "documentation", questionable: "responseWriting",
+  };
+  const capabilities = uniqueCapabilities([...tagged, ...statCaps, fallback[card.category]]).slice(0, 4);
+  const strength = Math.min(3, Math.max(1, 1 + Math.floor((card.answer ?? 0) / 2)));
+  return Object.fromEntries(capabilities.map((capability, index) => [capability, Math.max(1, strength - (index >= 2 ? 1 : 0))]));
+}
+
+function commentCapabilities(comment: CommentDef) {
+  const tagged = comment.tags.flatMap((tag) => TAG_CAPABILITIES[tag] ?? []);
+  const metric = METRIC_CAPABILITIES[comment.primary];
+  const secondary = comment.secondary ? METRIC_CAPABILITIES[comment.secondary].slice(0, 1) : [];
+  return uniqueCapabilities([...tagged, ...metric, ...secondary]).slice(0, 5);
+}
+
+function requirement(capability: Capability, target: number, prefix: string) {
+  const meta = CAPABILITY_META[capability];
+  return { id: `${prefix}:${capability}`, capability, label: meta.label, labelEn: meta.labelEn, target };
+}
+
+export function inferCommentRoutes(comment: CommentDef): ResolutionRoute[] {
+  if (comment.routes && comment.routes.length > 0) return comment.routes;
+  const capabilities = commentCapabilities(comment);
+  const [main, second = METRIC_CAPABILITIES[comment.primary][1], third = "responseWriting"] = capabilities;
+  const base = Math.max(5, comment.difficulty);
+  const verifyCaps = uniqueCapabilities([main, second, third]).slice(0, 3);
+  const scopeCaps = uniqueCapabilities(["claimFraming", "responseWriting", capabilities.includes("literature") ? "literature" : main]).slice(0, 3);
+  const transparentAnchor: Capability = capabilities.some((item) => item === "ethics" || item === "dataIntegrity") ? "ethics" : "reproducibility";
+  const transparentCaps = uniqueCapabilities([main, transparentAnchor, "responseWriting"]).slice(0, 3);
+  const make = (caps: Capability[], prefix: string, total: number) => caps.map((capability, index) => {
+    const used = caps.slice(0, index).reduce((sum, _item, usedIndex) => sum + (usedIndex === 0 ? Math.ceil(total * 0.45) : Math.ceil(total * 0.3)), 0);
+    const target = index === caps.length - 1 ? Math.max(1, total - used) : index === 0 ? Math.ceil(total * 0.45) : Math.ceil(total * 0.3);
+    return requirement(capability, target, prefix);
+  });
+  return [
+    {
+      id: "verify", name: "完整核验", nameEn: "Full verification",
+      summary: "正面补齐实验、协议与证据；资源较贵，但最不容易被追问。",
+      summaryEn: "Fill the experimental and protocol gaps directly. Expensive, but least likely to trigger a follow-up.",
+      requirements: make(verifyCaps, `${comment.id}:verify`, base),
+      resolutionDelta: { stats: { evidence: 1, reproducibility: 1 } }, followUpChance: 0.08, followUpCapability: "protocol",
+    },
+    {
+      id: "scope", name: "收窄主张", nameEn: "Narrow the claim",
+      summary: "减少不必要的承诺，用准确定位和逐点回复化解意见。",
+      summaryEn: "Promise less and answer precisely with careful positioning.",
+      requirements: make(scopeCaps, `${comment.id}:scope`, Math.max(4, base - 1)),
+      resolutionDelta: { stats: { novelty: -1, clarity: 1 }, risk: -1 }, followUpChance: 0.3, followUpCapability: "literature",
+    },
+    {
+      id: "transparent", name: "透明回应", nameEn: "Transparent response",
+      summary: "承认边界、开放细节并解释失败；影响力略低，编辑信任更高。",
+      summaryEn: "Acknowledge limits, open the details, and explain failures. Lower flash, higher trust.",
+      requirements: make(transparentCaps, `${comment.id}:transparent`, base),
+      resolutionDelta: { stats: { clarity: 1, reproducibility: 1 }, risk: -4 }, followUpChance: 0.16, followUpCapability: "documentation",
+    },
+  ];
+}
+
+export function scaleRouteRequirements(route: ResolutionRoute, difficulty: number) {
+  const original = route.requirements.reduce((sum, item) => sum + item.target, 0) || 1;
+  let assigned = 0;
+  return route.requirements.map((item, index) => {
+    const target = index === route.requirements.length - 1
+      ? Math.max(1, difficulty - assigned)
+      : Math.max(1, Math.round((item.target / original) * difficulty));
+    assigned += target;
+    return { ...item, target };
+  });
+}
+
+export const METRIC_META: Record<
+  Metric,
+  { label: string; labelEn: string; short: string; icon: string }
+> = {
+  novelty: { label: "创新性", labelEn: "Novelty", short: "N", icon: "✦" },
+  evidence: { label: "证据", labelEn: "Evidence", short: "E", icon: "▦" },
+  clarity: { label: "清晰度", labelEn: "Clarity", short: "C", icon: "✎" },
+  reproducibility: { label: "可复现性", labelEn: "Reproducibility", short: "R", icon: "⌘" },
+};
+
+export const STAGE_META: Record<
+  StageId,
+  { label: string; labelEn: string; en: string; initials: string; color: string }
+> = {
+  reviewer1: {
+    label: "第一轮外审",
+    labelEn: "First Review",
+    en: "Reviewer #1",
+    initials: "R1",
+    color: "mint",
+  },
+  reviewer2: {
+    label: "移动球门",
+    labelEn: "Moving Goalposts",
+    en: "Reviewer #2",
+    initials: "R2",
+    color: "red",
+  },
+  editor: {
+    label: "编辑裁决",
+    labelEn: "Editorial Decision",
+    en: "Associate Editor",
+    initials: "AE",
+    color: "amber",
+  },
+  coauthor: {
+    label: "隐藏加试",
+    labelEn: "Hidden Examination",
+    en: "Coauthor",
+    initials: "CO",
+    color: "violet",
+  },
+  camera: {
+    label: "终稿检查",
+    labelEn: "Final Checks",
+    en: "Camera Ready",
+    initials: "CR",
+    color: "blue",
+  },
+};
+
+export const CATEGORY_META: Record<
+  CardCategory,
+  { label: string; labelEn: string; icon: string }
+> = {
+  experiment: { label: "实验", labelEn: "Experiment", icon: "⚗" },
+  writing: { label: "写作", labelEn: "Writing", icon: "✎" },
+  rigor: { label: "严谨", labelEn: "Rigor", icon: "⌘" },
+  support: { label: "支援", labelEn: "Support", icon: "☕" },
+  questionable: { label: "危险", labelEn: "Questionable", icon: "⚠" },
+};
+
+const BASE_ROLES: RoleDef[] = [
+  {
+    id: "method",
+    name: "方法论文",
+    en: "Method Paper",
+    symbol: "M",
+    pitch: "点子够新，实验永远差最后一张表。",
+    passive: "每天第一张实验牌，对意见额外 +1 回应。",
+    weakness: "临床与外部验证意见难度 +1。",
+    stats: { novelty: 5, evidence: 2, clarity: 2, reproducibility: 2 },
+    resources: { gpu: 14, funding: 6, mental: 14 },
+  },
+  {
+    id: "clinical",
+    name: "临床论文",
+    en: "Clinical Paper",
+    symbol: "C",
+    pitch: "数据可信，审稿人只想知道模型新在哪。",
+    passive: "严谨牌首次命中时，额外 +1 回应并回复 1 点精神。",
+    weakness: "创新性意见难度 +1。",
+    stats: { novelty: 2, evidence: 4, clarity: 3, reproducibility: 4 },
+    resources: { gpu: 9, funding: 10, mental: 16 },
+  },
+  {
+    id: "foundation",
+    name: "基础模型",
+    en: "Foundation Model",
+    symbol: "F",
+    pitch: "参数很多，显存很少，摘要写得像登月。",
+    passive: "GPU 牌消耗 -1；每天第一张实验牌额外 +1 证据。",
+    weakness: "格式与可复现性意见难度 +1。",
+    stats: { novelty: 4, evidence: 3, clarity: 1, reproducibility: 1 },
+    resources: { gpu: 20, funding: 5, mental: 12 },
+  },
+];
+
+const BASE_CARDS: CardDef[] = [
+  {
+    id: "ablation",
+    name: "消融实验",
+    en: "Run Ablation",
+    category: "experiment",
+    flavor: "逐个拔掉模块，直到贡献看起来合理。",
+    rules: "证据 +2，可复现性 +1；擅长回答消融与创新质疑。",
+    focus: 1,
+    gpu: 2,
+    delta: { stats: { evidence: 2, reproducibility: 1 } },
+    answer: 1,
+    tags: ["ablation", "novelty", "evidence"],
+  },
+  {
+    id: "baseline",
+    name: "补强基线",
+    en: "Add Strong Baseline",
+    category: "experiment",
+    flavor: "终于找到了那个应该三个月前就跑的仓库。",
+    rules: "证据 +2；比较类意见额外有效。",
+    focus: 1,
+    gpu: 2,
+    delta: { stats: { evidence: 2 } },
+    answer: 2,
+    tags: ["comparison", "evidence"],
+  },
+  {
+    id: "external-validation",
+    name: "外部验证",
+    en: "External Validation",
+    category: "experiment",
+    flavor: "一个完全没见过你的数据集准备让你见识现实。",
+    rules: "证据 +3，可复现性 +1；强力但昂贵。",
+    focus: 2,
+    gpu: 3,
+    funding: 2,
+    delta: { stats: { evidence: 3, reproducibility: 1 } },
+    answer: 2,
+    tags: ["external", "clinical", "data", "evidence"],
+  },
+  {
+    id: "rewrite-intro",
+    name: "重写引言",
+    en: "Rewrite Introduction",
+    category: "writing",
+    flavor: "把“我们首次”改成“据我们所知，我们首次”。",
+    rules: "创新性 +2，清晰度 +2。",
+    focus: 1,
+    mental: 1,
+    delta: { stats: { novelty: 2, clarity: 2 } },
+    answer: 1,
+    tags: ["writing", "novelty", "claims"],
+  },
+  {
+    id: "stat-test",
+    name: "统计检验",
+    en: "Statistical Test",
+    category: "rigor",
+    flavor: "p 值并不能解决一切，但能解决这条意见。",
+    rules: "证据 +2，可复现性 +2。",
+    focus: 1,
+    funding: 1,
+    delta: { stats: { evidence: 2, reproducibility: 2 } },
+    answer: 2,
+    tags: ["statistics", "evidence", "significance"],
+  },
+  {
+    id: "better-figure",
+    name: "重画图表",
+    en: "Draw Better Figure",
+    category: "writing",
+    flavor: "字号从 5 pt 提升到了令人震撼的 6 pt。",
+    rules: "清晰度 +3；图表意见额外有效。",
+    focus: 1,
+    funding: 1,
+    delta: { stats: { clarity: 3 } },
+    answer: 2,
+    tags: ["figure", "formatting", "clarity"],
+  },
+  {
+    id: "ask-coauthor",
+    name: "追问合作者",
+    en: "Ask Coauthor",
+    category: "support",
+    flavor: "“Any thoughts?” —— Sent 02:13 AM",
+    rules: "结果不定：有时是关键修改，有时只是 Looks good。",
+    focus: 1,
+    delta: { mental: 1 },
+    answer: 1,
+    tags: ["support", "writing"],
+    volatile: "coauthor",
+  },
+  {
+    id: "sleep",
+    name: "睡一整晚",
+    en: "Sleep",
+    category: "support",
+    flavor: "罕见卡。很多人从未在博士期间抽到。",
+    rules: "精神 +7，撤稿风险 -3；消耗今天全部专注。",
+    focus: 3,
+    delta: { mental: 7, risk: -3 },
+    answer: 0,
+    tags: ["support"],
+  },
+  {
+    id: "tune-seed",
+    name: "调随机种子",
+    en: "Tune Random Seed",
+    category: "questionable",
+    flavor: "Seed 3407 不行，也许 Seed 3408 懂统计学。",
+    rules: "55% 大幅提升证据；失败会掉证据与精神。风险 +12。",
+    focus: 1,
+    gpu: 1,
+    risk: 12,
+    answer: 1,
+    tags: ["statistics", "evidence"],
+    volatile: "seed",
+  },
+  {
+    id: "hide-result",
+    name: "藏起坏结果",
+    en: "Hide Bad Result",
+    category: "questionable",
+    flavor: "短期看不到，不代表补充材料永远看不到。",
+    rules: "证据 +3，清晰度 +1，对意见 +4；风险 +25。",
+    focus: 0,
+    risk: 25,
+    delta: { stats: { evidence: 3, clarity: 1 } },
+    answer: 4,
+    tags: ["evidence", "writing"],
+  },
+  {
+    id: "release-code",
+    name: "公开代码",
+    en: "Release Code",
+    category: "rigor",
+    flavor: "README 里第一次出现了可运行命令。",
+    rules: "可复现性 +3，风险 -6。",
+    focus: 1,
+    delta: { stats: { reproducibility: 3 }, risk: -6 },
+    answer: 2,
+    tags: ["code", "reproducibility", "audit"],
+  },
+  {
+    id: "seed-everything",
+    name: "固定所有种子",
+    en: "Seed Everything",
+    category: "rigor",
+    flavor: "包括那个藏在 dataloader worker 里的。",
+    rules: "可复现性 +3，证据 +1。",
+    focus: 1,
+    delta: { stats: { reproducibility: 3, evidence: 1 } },
+    answer: 2,
+    tags: ["reproducibility", "statistics", "audit"],
+  },
+  {
+    id: "power-analysis",
+    name: "功效分析",
+    en: "Power Analysis",
+    category: "rigor",
+    flavor: "样本量终于不是“因为数据就这么多”。",
+    rules: "证据 +3，可复现性 +1。",
+    focus: 1,
+    funding: 2,
+    delta: { stats: { evidence: 3, reproducibility: 1 } },
+    answer: 2,
+    tags: ["statistics", "clinical", "significance"],
+  },
+  {
+    id: "error-analysis",
+    name: "错误分析",
+    en: "Error Analysis",
+    category: "experiment",
+    flavor: "模型不会犯错，它只是在发现新的失败模式。",
+    rules: "证据 +2，清晰度 +1。",
+    focus: 1,
+    gpu: 1,
+    delta: { stats: { evidence: 2, clarity: 1 } },
+    answer: 2,
+    tags: ["analysis", "ablation", "clinical"],
+  },
+  {
+    id: "rebuttal-letter",
+    name: "逐条回复",
+    en: "Rebuttal Letter",
+    category: "writing",
+    flavor: "Thank you for this insightful comment × 14。",
+    rules: "清晰度 +2；对任何意见都有 +3 基础回应。",
+    focus: 1,
+    delta: { stats: { clarity: 2 } },
+    answer: 3,
+    tags: ["rebuttal", "writing"],
+  },
+  {
+    id: "related-work",
+    name: "补读相关工作",
+    en: "Read Related Work",
+    category: "writing",
+    flavor: "原来 2019 年就有人做过，只是名字不一样。",
+    rules: "创新性 +2，清晰度 +1。",
+    focus: 1,
+    delta: { stats: { novelty: 2, clarity: 1 } },
+    answer: 2,
+    tags: ["novelty", "comparison", "citations"],
+  },
+  {
+    id: "cite-recent",
+    name: "补最新引用",
+    en: "Cite Recent Work",
+    category: "writing",
+    flavor: "一篇预印本，六位作者，零次复现。",
+    rules: "创新性 +1，清晰度 +1；0 专注但需要经费。",
+    focus: 0,
+    funding: 1,
+    delta: { stats: { novelty: 1, clarity: 1 } },
+    answer: 1,
+    tags: ["citations", "comparison", "novelty"],
+  },
+  {
+    id: "simplify-claim",
+    name: "收窄结论",
+    en: "Simplify Claim",
+    category: "writing",
+    flavor: "从“通用”改成“在我们测试的两个数据集上”。",
+    rules: "清晰度 +2，创新性 -1，风险 -2；当前意见难度 -1。",
+    focus: 0,
+    delta: { stats: { clarity: 2, novelty: -1 }, risk: -2 },
+    answer: 2,
+    tags: ["claims", "writing", "clinical"],
+    shrinkIssue: 1,
+  },
+  {
+    id: "appendix",
+    name: "塞进附录",
+    en: "Add Appendix",
+    category: "writing",
+    flavor: "正文没空间，附录还有尊严。",
+    rules: "清晰度 +1，可复现性 +2。",
+    focus: 1,
+    delta: { stats: { clarity: 1, reproducibility: 2 } },
+    answer: 2,
+    tags: ["formatting", "reproducibility", "details"],
+  },
+  {
+    id: "clean-split",
+    name: "重查数据划分",
+    en: "Clean Data Split",
+    category: "rigor",
+    flavor: "病人级划分：这次是真的病人级。",
+    rules: "可复现性 +3，证据 +1。",
+    focus: 1,
+    mental: 1,
+    delta: { stats: { reproducibility: 3, evidence: 1 } },
+    answer: 2,
+    tags: ["leakage", "data", "audit"],
+  },
+  {
+    id: "cross-validation",
+    name: "交叉验证",
+    en: "Cross Validation",
+    category: "experiment",
+    flavor: "五个 fold，五倍运行时间，五种新焦虑。",
+    rules: "证据 +3，可复现性 +2。",
+    focus: 2,
+    gpu: 3,
+    delta: { stats: { evidence: 3, reproducibility: 2 } },
+    answer: 2,
+    tags: ["statistics", "data", "external"],
+  },
+  {
+    id: "ask-labmate",
+    name: "内部预审",
+    en: "Ask Labmate",
+    category: "support",
+    flavor: "真正的审稿人不会说“这句我没看懂”这么客气。",
+    rules: "清晰度 +1，精神 +2，并返还 1 专注。",
+    focus: 1,
+    delta: { stats: { clarity: 1 }, mental: 2, focus: 1 },
+    answer: 1,
+    tags: ["support", "rebuttal", "clarity"],
+  },
+  {
+    id: "coffee",
+    name: "第三杯咖啡",
+    en: "Emergency Coffee",
+    category: "support",
+    flavor: "获得专注。也获得了手抖。",
+    rules: "专注 +1，精神 +1，风险 +2。",
+    focus: 0,
+    delta: { focus: 1, mental: 1, risk: 2 },
+    answer: 0,
+    tags: ["support"],
+  },
+  {
+    id: "cut-scope",
+    name: "砍掉支线",
+    en: "Cut Scope",
+    category: "writing",
+    flavor: "把三篇论文塞进一篇，通常会得到零篇论文。",
+    rules: "清晰度 +2，创新性 -1，追回 1 天；当前意见难度 -2。",
+    focus: 1,
+    delta: { stats: { clarity: 2, novelty: -1 }, days: 1 },
+    answer: 1,
+    tags: ["writing", "claims"],
+    shrinkIssue: 2,
+  },
+  {
+    id: "smaller-model",
+    name: "换小模型",
+    en: "Use Smaller Model",
+    category: "rigor",
+    flavor: "速度快了，SOTA 没了，睡眠回来了。",
+    rules: "GPU +3，可复现性 +2，证据 -1。",
+    focus: 1,
+    delta: { stats: { evidence: -1, reproducibility: 2 }, gpu: 3 },
+    answer: 1,
+    tags: ["efficiency", "reproducibility"],
+  },
+  {
+    id: "cloud-gpu",
+    name: "紧急云显卡",
+    en: "Emergency Cloud GPU",
+    category: "support",
+    flavor: "信用卡额度也是一种计算资源。",
+    rules: "经费 -3，GPU +7，风险 +3。",
+    focus: 0,
+    funding: 3,
+    risk: 3,
+    delta: { gpu: 7 },
+    answer: 0,
+    tags: ["support", "gpu"],
+  },
+  {
+    id: "negative-results",
+    name: "诚实报告负结果",
+    en: "Report Negative Results",
+    category: "rigor",
+    flavor: "曲线不好看，但科研记录很好看。",
+    rules: "证据 +1，可复现性 +3，创新性 -1，风险 -10。",
+    focus: 1,
+    delta: {
+      stats: { evidence: 1, reproducibility: 3, novelty: -1 },
+      risk: -10,
+    },
+    answer: 3,
+    tags: ["negative", "statistics", "audit", "evidence"],
+  },
+  {
+    id: "reproduce-baseline",
+    name: "复现基线",
+    en: "Reproduce Baseline",
+    category: "experiment",
+    flavor: "官方权重跑不起来，说明你已经开始真正复现了。",
+    rules: "证据 +2，可复现性 +3。",
+    focus: 2,
+    gpu: 3,
+    delta: { stats: { evidence: 2, reproducibility: 3 } },
+    answer: 3,
+    tags: ["comparison", "reproducibility", "audit"],
+  },
+  {
+    id: "latex-exorcism",
+    name: "驱魔 LaTeX",
+    en: "LaTeX Exorcism",
+    category: "writing",
+    flavor: "\u200b\\vspace{-2mm}：学术出版的黑魔法。",
+    rules: "清晰度 +4；终稿与格式意见额外有效。",
+    focus: 1,
+    delta: { stats: { clarity: 4 } },
+    answer: 3,
+    tags: ["formatting", "figure", "camera"],
+  },
+  {
+    id: "take-walk",
+    name: "出去走走",
+    en: "Take a Walk",
+    category: "support",
+    flavor: "离开屏幕十分钟，世界竟然还在。",
+    rules: "精神 +5，风险 -2。",
+    focus: 1,
+    delta: { mental: 5, risk: -2 },
+    answer: 0,
+    tags: ["support"],
+  },
+];
+
+const BASE_COMMENTS: CommentDef[] = [
+  {
+    id: "r1-baseline",
+    stage: "reviewer1",
+    quote: "The comparison with established baselines is incomplete.",
+    note: "补上强基线，别只和自己三个月前的版本比。",
+    primary: "evidence",
+    secondary: "reproducibility",
+    difficulty: 6,
+    severity: 1,
+    tags: ["comparison", "evidence"],
+  },
+  {
+    id: "r1-stats",
+    stage: "reviewer1",
+    quote: "No statistical significance test is provided.",
+    note: "需要统计证据，而不是“肉眼看起来明显更好”。",
+    primary: "evidence",
+    secondary: "reproducibility",
+    difficulty: 6,
+    severity: 1,
+    tags: ["statistics", "significance"],
+  },
+  {
+    id: "r1-figure",
+    stage: "reviewer1",
+    quote: "Figure 2 is difficult to understand.",
+    note: "图例、字号、配色，至少救活两个。",
+    primary: "clarity",
+    difficulty: 5,
+    severity: 1,
+    tags: ["figure", "clarity"],
+  },
+  {
+    id: "r1-split",
+    stage: "reviewer1",
+    quote: "Please clarify the train/test split and random seeds.",
+    note: "可复现细节不是“见代码”，尤其代码还没公开。",
+    primary: "reproducibility",
+    secondary: "clarity",
+    difficulty: 6,
+    severity: 1,
+    tags: ["data", "reproducibility", "details"],
+  },
+  {
+    id: "r1-ablation",
+    stage: "reviewer1",
+    quote: "The contribution of each component remains unclear.",
+    note: "请证明每个模块不是为了把架构图画满。",
+    primary: "novelty",
+    secondary: "evidence",
+    difficulty: 6,
+    severity: 1,
+    tags: ["ablation", "novelty"],
+  },
+  {
+    id: "r2-novelty",
+    stage: "reviewer2",
+    quote: "Novelty is limited.",
+    note: "经典四字判决。需要创新论证，也需要写清楚。",
+    primary: "novelty",
+    secondary: "clarity",
+    difficulty: 8,
+    severity: 2,
+    tags: ["novelty", "writing"],
+  },
+  {
+    id: "r2-recent",
+    stage: "reviewer2",
+    quote: "Missing comparison with recent methods.",
+    note: "“Recent” 指昨晚上传 arXiv 的那篇。",
+    primary: "evidence",
+    secondary: "novelty",
+    difficulty: 8,
+    severity: 2,
+    tags: ["comparison", "citations"],
+  },
+  {
+    id: "r2-leakage",
+    stage: "reviewer2",
+    quote: "Possible data leakage cannot be ruled out.",
+    note: "高危意见。需要重新审计划分、代码与日志。",
+    primary: "reproducibility",
+    secondary: "evidence",
+    difficulty: 9,
+    severity: 3,
+    tags: ["leakage", "audit", "data"],
+  },
+  {
+    id: "r2-mask",
+    stage: "reviewer2",
+    quote: "Why was this mask ratio selected?",
+    note: "“沿用默认值”不是方法学解释。",
+    primary: "reproducibility",
+    secondary: "clarity",
+    difficulty: 8,
+    severity: 2,
+    tags: ["ablation", "details", "statistics"],
+  },
+  {
+    id: "r2-datasets",
+    stage: "reviewer2",
+    quote: "Please add experiments on three more datasets.",
+    note: "审稿人没有提供数据集、算力或额外三个月。",
+    primary: "evidence",
+    secondary: "reproducibility",
+    difficulty: 10,
+    severity: 3,
+    tags: ["external", "data", "clinical"],
+  },
+  {
+    id: "r2-vit",
+    stage: "reviewer2",
+    quote: "Please compare with ViT-Large for completeness.",
+    note: "完整性通常与显存成反比。",
+    primary: "evidence",
+    secondary: "novelty",
+    difficulty: 9,
+    severity: 2,
+    tags: ["comparison", "gpu", "evidence"],
+  },
+  {
+    id: "r2-clinical",
+    stage: "reviewer2",
+    quote: "The clinical relevance is not sufficiently demonstrated.",
+    note: "从性能提升走到实际价值，中间还差一座桥。",
+    primary: "novelty",
+    secondary: "evidence",
+    difficulty: 9,
+    severity: 2,
+    tags: ["clinical", "external", "claims"],
+  },
+  {
+    id: "r2-contradiction",
+    stage: "reviewer2",
+    quote: "Please simplify the method and add more components.",
+    note: "互相矛盾的要求已成功通过同行评审。",
+    primary: "clarity",
+    secondary: "novelty",
+    difficulty: 9,
+    severity: 3,
+    tags: ["claims", "ablation", "writing"],
+  },
+  {
+    id: "r2-selfcite",
+    stage: "reviewer2",
+    quote: "Please cite these six highly relevant papers.",
+    note: "六篇论文恰好共享一位通讯作者。",
+    primary: "novelty",
+    secondary: "clarity",
+    difficulty: 7,
+    severity: 2,
+    tags: ["citations", "novelty"],
+  },
+  {
+    id: "editor-claims",
+    stage: "editor",
+    quote: "The claims appear stronger than the evidence presented.",
+    note: "编辑开始计算你的形容词与实验数量之比。",
+    primary: "evidence",
+    secondary: "clarity",
+    difficulty: 9,
+    severity: 3,
+    tags: ["claims", "negative", "evidence"],
+  },
+  {
+    id: "editor-balance",
+    stage: "editor",
+    quote: "The concerns have not been addressed in a balanced manner.",
+    note: "只堆实验或只改文字都不够。",
+    primary: "clarity",
+    secondary: "evidence",
+    difficulty: 9,
+    severity: 3,
+    tags: ["rebuttal", "writing", "statistics"],
+  },
+  {
+    id: "editor-ethics",
+    stage: "editor",
+    quote: "The data governance and ethics statement need clarification.",
+    note: "这次“补充材料见”真的不够。",
+    primary: "reproducibility",
+    secondary: "clarity",
+    difficulty: 8,
+    severity: 2,
+    tags: ["audit", "data", "details"],
+  },
+  {
+    id: "editor-impact",
+    stage: "editor",
+    quote: "It is unclear whether the advance is substantial enough.",
+    note: "编辑在“有趣”和“足够有趣”之间画了一条线。",
+    primary: "novelty",
+    secondary: "evidence",
+    difficulty: 10,
+    severity: 3,
+    tags: ["novelty", "comparison", "claims"],
+  },
+  {
+    id: "camera-pages",
+    stage: "camera",
+    quote: "The manuscript exceeds the page limit by 1.7 pages.",
+    note: "算法部分不能删，致谢也不敢删。",
+    primary: "clarity",
+    difficulty: 7,
+    severity: 2,
+    tags: ["formatting", "camera", "writing"],
+  },
+  {
+    id: "camera-figure",
+    stage: "camera",
+    quote: "Figures do not meet the required resolution.",
+    note: "截图粘贴的代价终于来了。",
+    primary: "clarity",
+    secondary: "reproducibility",
+    difficulty: 7,
+    severity: 2,
+    tags: ["figure", "formatting", "camera"],
+  },
+  {
+    id: "camera-repo",
+    stage: "camera",
+    quote: "The anonymous repository contains identifying information.",
+    note: "Git 历史比论文作者列表诚实。",
+    primary: "reproducibility",
+    secondary: "clarity",
+    difficulty: 8,
+    severity: 3,
+    tags: ["code", "audit", "camera"],
+  },
+  {
+    id: "camera-refs",
+    stage: "camera",
+    quote: "Several references are missing or incorrectly formatted.",
+    note: "BibTeX 在最后一天觉醒了自我意识。",
+    primary: "clarity",
+    secondary: "reproducibility",
+    difficulty: 6,
+    severity: 2,
+    tags: ["citations", "formatting", "camera"],
+  },
+  {
+    id: "coauthor-rewrite",
+    stage: "coauthor",
+    quote: "Coauthor: We should rewrite the entire paper.",
+    note: "截止前一天，隐藏 Boss 已加入会议。",
+    primary: "clarity",
+    secondary: "novelty",
+    difficulty: 10,
+    severity: 3,
+    tags: ["writing", "claims", "coauthor"],
+  },
+  {
+    id: "coauthor-title",
+    stage: "coauthor",
+    quote: "Coauthor: The title needs a completely different framing.",
+    note: "标题变了，整篇论文的叙事也顺便变了。",
+    primary: "novelty",
+    secondary: "clarity",
+    difficulty: 9,
+    severity: 2,
+    tags: ["writing", "novelty", "coauthor"],
+  },
+];
+
+const BASE_EVENTS: EventDef[] = [
+  {
+    id: "gpu-oom",
+    icon: "⚡",
+    title: "GPU OOM",
+    description: "凌晨三点，训练在 99% 处显存溢出。日志只留下了 CUDA out of memory。",
+    choices: [
+      {
+        id: "rerun",
+        label: "减小 batch 重跑",
+        hint: "GPU -2 · 证据 +1",
+        result: "它终于跑完了，只比原设置慢四倍。",
+        delta: { gpu: -2, stats: { evidence: 1 } },
+      },
+      {
+        id: "debug",
+        label: "修内存泄漏",
+        hint: "精神 -2 · 可复现性 +2",
+        result: "原来缓存了每一步的全部 tensor。你成长了，也老了。",
+        delta: { mental: -2, stats: { reproducibility: 2 } },
+      },
+    ],
+  },
+  {
+    id: "disk-full",
+    icon: "▣",
+    title: "服务器硬盘满了",
+    description: "274 个名为 final_final_v3 的 checkpoint 占领了共享盘。",
+    choices: [
+      {
+        id: "cleanup",
+        label: "整理实验目录",
+        hint: "精神 -1 · 可复现性 +2",
+        result: "你删除了 86 GB，也第一次看懂了自己的目录结构。",
+        delta: { mental: -1, stats: { reproducibility: 2 } },
+      },
+      {
+        id: "storage",
+        label: "买临时存储",
+        hint: "经费 -2 · GPU +2",
+        result: "问题没有解决，只是被续费了。",
+        delta: { funding: -2, gpu: 2 },
+      },
+    ],
+  },
+  {
+    id: "new-method",
+    icon: "↗",
+    title: "新方法抢先发表",
+    description: "投稿前一天，arXiv 出现了标题和你有 73% 相似的新论文。",
+    choices: [
+      {
+        id: "differentiate",
+        label: "连夜做差异化",
+        hint: "GPU -2 · 精神 -2 · 创新性 +2",
+        result: "你在 related work 里写出了职业生涯最长的转折句。",
+        delta: { gpu: -2, mental: -2, stats: { novelty: 2 } },
+      },
+      {
+        id: "narrow",
+        label: "诚实收窄主张",
+        hint: "创新性 -1 · 清晰度 +3 · 风险 -4",
+        result: "没那么轰动，但终于准确。",
+        delta: { stats: { novelty: -1, clarity: 3 }, risk: -4 },
+      },
+    ],
+  },
+  {
+    id: "sensitivity-zero",
+    icon: "0",
+    title: "一个 fold 的 Sensitivity 变成 0",
+    description: "平均数还可以，但那个 0 在表格里像黑洞一样醒目。",
+    choices: [
+      {
+        id: "report",
+        label: "如实报告",
+        hint: "证据 -1 · 可复现性 +3 · 风险 -8",
+        result: "图不好看，但读者终于能相信其他图。",
+        delta: {
+          stats: { evidence: -1, reproducibility: 3 },
+          risk: -8,
+        },
+      },
+      {
+        id: "rerun",
+        label: "换种子重跑",
+        hint: "GPU -3 · 证据 +2 · 风险 +12",
+        result: "这次不是 0。你决定不问为什么。",
+        delta: { gpu: -3, stats: { evidence: 2 }, risk: 12 },
+      },
+    ],
+  },
+  {
+    id: "looks-good",
+    icon: "✓",
+    title: "合作者回复：Looks good to me",
+    description: "你发送了 17 个具体问题，对方在 11 秒后给出四个单词。",
+    choices: [
+      {
+        id: "chase",
+        label: "要求实质修改",
+        hint: "精神 -2 · 清晰度 +2",
+        result: "对方终于改了摘要里的一个逗号和关键论证。",
+        delta: { mental: -2, stats: { clarity: 2 } },
+      },
+      {
+        id: "accept",
+        label: "把它当作祝福",
+        hint: "精神 +2",
+        result: "至少这次没人新增需求。",
+        delta: { mental: 2 },
+      },
+    ],
+  },
+  {
+    id: "self-citations",
+    icon: "§",
+    title: "审稿人要求引用六篇论文",
+    description: "六篇论文的通讯作者缩写，和审稿意见落款神秘地一致。",
+    choices: [
+      {
+        id: "cite",
+        label: "策略性补充",
+        hint: "清晰度 +2 · 风险 +6",
+        result: "Related Work 增长了半页，审稿人满意度可能增长了。",
+        delta: { stats: { clarity: 2 }, risk: 6 },
+      },
+      {
+        id: "decline",
+        label: "礼貌拒绝",
+        hint: "精神 -2 · 创新性 +2",
+        result: "你写了三段话解释为什么不引用，逻辑无懈可击。",
+        delta: { mental: -2, stats: { novelty: 2 } },
+      },
+    ],
+  },
+  {
+    id: "auc-drop",
+    icon: "↘",
+    title: "加实验后 AUC 反而下降",
+    description: "Reviewer #2 要的实验完成了，并证明了 Reviewer #2 的担忧。",
+    choices: [
+      {
+        id: "honest",
+        label: "讨论失败模式",
+        hint: "证据 +1 · 可复现性 +2 · 风险 -6",
+        result: "结果更弱，论文却更强了。",
+        delta: {
+          stats: { evidence: 1, reproducibility: 2 },
+          risk: -6,
+        },
+      },
+      {
+        id: "tune",
+        label: "再调一轮",
+        hint: "GPU -3 · 证据 +2 · 精神 -2",
+        result: "AUC 回来了，周末没有。",
+        delta: { gpu: -3, mental: -2, stats: { evidence: 2 } },
+      },
+    ],
+  },
+  {
+    id: "latex-table",
+    icon: "↔",
+    title: "LaTeX 表格超出双栏",
+    description: "它只超出 4 mm，但编辑系统把它当作人格缺陷。",
+    choices: [
+      {
+        id: "rewrite",
+        label: "重排整张表",
+        hint: "精神 -1 · 清晰度 +3",
+        result: "表格终于能看懂，甚至没有使用 resizebox。",
+        delta: { mental: -1, stats: { clarity: 3 } },
+      },
+      {
+        id: "tiny",
+        label: "把字号改成 4 pt",
+        hint: "清晰度 -1 · 追回 1 天",
+        result: "它符合格式，但不再符合人类视觉。",
+        delta: { days: 1, stats: { clarity: -1 } },
+        effect: { conditions: { pageDebt: 2 } },
+      },
+    ],
+  },
+  {
+    id: "free-cluster",
+    icon: "∞",
+    title: "集群突然空闲",
+    description: "全组去开会了，八张显卡在夜里静静等你。",
+    choices: [
+      {
+        id: "sweep",
+        label: "跑完整参数扫描",
+        hint: "GPU +4 · 证据 +2",
+        result: "你第一次看到了不带 OOM 的进度条。",
+        delta: { gpu: 4, stats: { evidence: 2 } },
+      },
+      {
+        id: "rest",
+        label: "备份后下班",
+        hint: "精神 +4 · 可复现性 +1",
+        result: "服务器和你都得到了维护。",
+        delta: { mental: 4, stats: { reproducibility: 1 } },
+      },
+    ],
+  },
+  {
+    id: "license-update",
+    icon: "⚖",
+    title: "数据集许可证更新",
+    description: "README 新增了一段你提交前从未见过的限制。",
+    choices: [
+      {
+        id: "audit",
+        label: "重做合规检查",
+        hint: "失去 1 天 · 可复现性 +3",
+        result: "麻烦，但现在数据治理段落经得起追问。",
+        delta: { days: -1, stats: { reproducibility: 3 } },
+      },
+      {
+        id: "ignore",
+        label: "假装没看到",
+        hint: "风险 +18 · 证据 +1",
+        result: "提交按钮变绿了，风险条也变红了。",
+        delta: { risk: 18, stats: { evidence: 1 } },
+      },
+    ],
+  },
+  {
+    id: "useful-edits",
+    icon: "✦",
+    title: "合作者真的发来了修改",
+    description: "一个带修订痕迹的文档。不是“Looks good”。这不是演习。",
+    choices: [
+      {
+        id: "merge",
+        label: "合并全部修改",
+        hint: "清晰度 +3 · 精神 +2",
+        result: "有些句子居然一次就读懂了。",
+        delta: { mental: 2, stats: { clarity: 3 } },
+      },
+      {
+        id: "learn",
+        label: "顺便重构论证",
+        hint: "创新性 +2 · 清晰度 +2 · 精神 -1",
+        result: "论文获得了主线，你失去了一个夜晚。",
+        delta: { mental: -1, stats: { novelty: 2, clarity: 2 } },
+      },
+    ],
+  },
+  {
+    id: "reviewer-appendix",
+    icon: "?",
+    title: "审稿人真的读了附录",
+    description: "他准确引用了 Appendix C.4。这种情况不在你的灾难预案里。",
+    choices: [
+      {
+        id: "polish",
+        label: "补全附录细节",
+        hint: "可复现性 +3 · 精神 -1",
+        result: "这一次，“见附录”确实解决了问题。",
+        delta: { mental: -1, stats: { reproducibility: 3 } },
+      },
+      {
+        id: "celebrate",
+        label: "庆祝有人读完",
+        hint: "精神 +4 · 清晰度 +1",
+        result: "被认真审稿竟然有点感动。只是一点。",
+        delta: { mental: 4, stats: { clarity: 1 } },
+      },
+    ],
+  },
+];
+
+export const ROLES: RoleDef[] = [...BASE_ROLES, ...EXPANSION_ROLES, ...MEGA_ROLES];
+export const CARDS: CardDef[] = [...BASE_CARDS, ...EXPANSION_CARDS, ...MEGA_CARDS].map((card) => ({
+  ...card,
+  provides: inferCardCapabilities(card),
+}));
+export const COMMENTS: CommentDef[] = [...BASE_COMMENTS, ...EXPANSION_COMMENTS, ...MEGA_COMMENTS].map((comment) => ({
+  ...comment,
+  routes: inferCommentRoutes(comment),
+}));
+export const EVENTS: EventDef[] = [...BASE_EVENTS, ...EXPANSION_EVENTS, ...MEGA_EVENTS];
+export const RELICS = [...EXPANSION_RELICS, ...MEGA_RELICS];
+export const STARTING_DECKS = { ...EXPANSION_STARTING_DECKS, ...MEGA_STARTING_DECKS };
+
+export const ROLE_BY_ID = Object.fromEntries(ROLES.map((role) => [role.id, role]));
+export const CARD_BY_ID = Object.fromEntries(CARDS.map((card) => [card.id, card]));
+export const COMMENT_BY_ID = Object.fromEntries(
+  COMMENTS.map((comment) => [comment.id, comment]),
+);
+export const EVENT_BY_ID = Object.fromEntries(EVENTS.map((event) => [event.id, event]));
+export const RELIC_BY_ID = Object.fromEntries(RELICS.map((relic) => [relic.id, relic]));
+
+export function stageForResolved(resolved: number): StageId {
+  if (resolved < 8) return "reviewer1";
+  if (resolved < 24) return "reviewer2";
+  if (resolved < 32) return "editor";
+  return "camera";
+}
