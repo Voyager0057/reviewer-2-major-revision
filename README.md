@@ -27,17 +27,6 @@
 
 审稿意见不是随机血条。每条意见都要求若干研究能力，例如“统计检验”“外部验证”“数据完整性”或“可解释性”；只有带有相应能力标签的卡牌才能高效回应。打出顺序、卡牌组合、资源成本和意见紧迫度都会影响结果。
 
-## GitHub Pages 一键发布
-
-仓库已经包含 `.github/workflows/pages.yml`。首次上传 GitHub 后：
-
-1. 打开仓库的 **Settings → Pages**。
-2. 在 **Build and deployment** 中把 **Source** 设为 **GitHub Actions**。
-3. 推送到 `main` 分支，或进入 **Actions → Publish playable game → Run workflow**。
-
-工作流会自动重新生成单文件版本、运行离线校验并发布。发布完成后，玩家点开 GitHub Pages 地址即可在线玩；下载 `Reviewer-2-Major-Revision.html` 则可离线玩。
-
-更完整的首次建仓、发布和版本附件说明见 [PUBLISHING.md](PUBLISHING.md)。
 
 ## 本地开发
 
