@@ -3,6 +3,10 @@
 > **48 天。40+ 条审稿意见。有限的 GPU、经费和精神状态。**  
 > 你能在 Reviewer #2 改完所有要求之前，活着拿到 Decision Letter 吗？
 
+[![Reviewer #2: Major Revision 游戏封面](public/og.png)](https://voyager0057.github.io/reviewer-2-major-revision/)
+
+*点击封面即可进入在线版。*
+
 ## 立即游玩
 
 ### [▶ 在线开始游戏](https://voyager0057.github.io/reviewer-2-major-revision/)
@@ -29,6 +33,16 @@
 - 代码开放、方法文档与可复现流程
 
 只有能力匹配的行动卡才能推进相应步骤。离题卡不会凭空解决审稿意见。
+
+## 游戏画面
+
+![Reviewer #2 主菜单与完整投稿战役入口](public/readme/menu.jpg)
+
+*从论文封面开始你的 48 天完整投稿战役。*
+
+![Reviewer #2 审稿意见、解决路线与行动卡界面](public/readme/gameplay.jpg)
+
+*读懂审稿意见，选择解决路线，再用能力真正匹配的行动卡推进具体步骤。*
 
 ## 四步上手
 
