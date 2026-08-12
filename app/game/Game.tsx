@@ -3,14 +3,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CAPABILITY_META,
+  CARDS,
   CARD_BY_ID,
   CATEGORY_META,
   EVENT_BY_ID,
+  EVENTS,
   METRICS,
   METRIC_META,
   RELIC_BY_ID,
   ROLE_BY_ID,
-  ROLES,
   STAGE_META,
 } from "./data";
 import {
@@ -23,6 +24,7 @@ import {
   getCardPreview,
   getCurrentComment,
   getCurrentRoute,
+  getEventDialogue,
   getIssueRequirements,
 } from "./engine";
 import {
@@ -33,13 +35,24 @@ import {
   eventChoiceText,
   eventDescription,
   eventTitle,
-  roleText,
 } from "./i18n";
-import { clearRun, commitBest, loadRun, readBest, saveRun } from "./storage";
-import type { BestRun } from "./storage";
-import type { GameAction, GameState, Locale, Metric, RoleDef } from "./types";
+import { DEFAULT_RUN_SETUP } from "./settings";
+import {
+  clearRun,
+  commitBest,
+  deleteManualRun,
+  listManualRuns,
+  loadManualRun,
+  loadRun,
+  readBest,
+  saveManualRun,
+  saveRun,
+} from "./storage";
+import type { BestRun, ManualSaveMetadata, ManualSaveSlot } from "./storage";
+import type { EventChoice, GameAction, GameState, Locale, Metric, RunSetup } from "./types";
+import { NewGameSetup, PauseModal, SaveManagerModal, TimelineDrawer } from "./GameMenus";
 
-type MenuScreen = "menu" | "roles";
+type MenuScreen = "menu" | "setup";
 type SoundKind = "paper" | "success" | "error" | "stamp";
 
 const SOUND_KEY = "reviewer2:sound:v1";
@@ -78,57 +91,6 @@ function MetricBar({
   );
 }
 
-function RoleCard({
-  role,
-  selected,
-  onSelect,
-  locale,
-}: {
-  role: RoleDef;
-  selected: boolean;
-  onSelect: () => void;
-  locale: Locale;
-}) {
-  const c = UI_COPY[locale];
-  return (
-    <button
-      type="button"
-      className={`role-card ${selected ? "is-selected" : ""}`}
-      onClick={onSelect}
-      aria-pressed={selected}
-    >
-      <span className="folder-tab">{role.en}</span>
-      <span className="role-symbol" aria-hidden="true">
-        {role.symbol}
-      </span>
-      <span className="role-heading">
-        <strong>{locale === "zh" ? role.name : role.en}</strong>
-        <small>{locale === "zh" ? role.en : role.name}</small>
-      </span>
-      <span className="role-pitch">{roleText(role, "pitch", locale)}</span>
-      <span className="role-metrics">
-        {METRICS.map((metric) => (
-          <span key={metric}>
-            {METRIC_META[metric].short}
-            <b>{role.stats[metric]}</b>
-          </span>
-        ))}
-      </span>
-      <span className="role-passive">
-        <b>{c.passive}</b> {roleText(role, "passive", locale)}
-      </span>
-      <span className="role-weakness">
-        <b>{c.weakness}</b> {roleText(role, "weakness", locale)}
-      </span>
-      <span className="role-resources">
-        <span>GPU {role.resources.gpu * 4}</span>
-        <span>{c.funding} {role.resources.funding * 4}</span>
-        <span>{c.mental} {Math.min(24, role.resources.mental + 8)}</span>
-      </span>
-    </button>
-  );
-}
-
 function ResourceChip({
   icon,
   label,
@@ -156,6 +118,76 @@ function safeSeed() {
     return values[0] || 20260812;
   }
   return 20260812;
+}
+
+type EventOutcomePart = { text: string; tone: "gain" | "cost" | "neutral" };
+
+function rawEventDeltaParts(choice: EventChoice, locale: Locale): EventOutcomePart[] {
+  const parts: EventOutcomePart[] = [];
+  const metricNames: Record<Metric, [string, string]> = {
+    novelty: ["创新", "Novelty"], evidence: ["证据", "Evidence"], clarity: ["清晰", "Clarity"], reproducibility: ["复现", "Repro"],
+  };
+  METRICS.forEach((metric) => {
+    const value = choice.delta.stats?.[metric];
+    if (value) parts.push({ text: `${metricNames[metric][locale === "zh" ? 0 : 1]} ${value > 0 ? "+" : ""}${value}`, tone: value > 0 ? "gain" : "cost" });
+  });
+  const names = locale === "zh"
+    ? { gpu: "GPU", funding: "经费", mental: "精神", risk: "风险", days: "天数", focus: "专注" }
+    : { gpu: "GPU", funding: "Funding", mental: "Mental", risk: "Risk", days: "Days", focus: "Focus" };
+  (["gpu", "funding", "mental", "risk", "days", "focus"] as const).forEach((key) => {
+    const value = choice.delta[key];
+    if (value) parts.push({ text: `${names[key]} ${value > 0 ? "+" : ""}${value}`, tone: key === "risk" ? (value > 0 ? "cost" : "gain") : (value > 0 ? "gain" : "cost") });
+  });
+  return parts;
+}
+
+function eventOutcomeParts(game: GameState, choice: EventChoice, locale: Locale): EventOutcomePart[] {
+  const before = game.eventFlow?.before;
+  if (!before) return rawEventDeltaParts(choice, locale);
+  const parts: EventOutcomePart[] = [];
+  const pushDelta = (label: string, value: number, inverted = false) => {
+    if (!value) return;
+    parts.push({ text: `${label} ${value > 0 ? "+" : ""}${value}`, tone: (value > 0) !== inverted ? "gain" : "cost" });
+  };
+  const metricNames: Record<Metric, [string, string]> = {
+    novelty: ["创新", "Novelty"], evidence: ["证据", "Evidence"], clarity: ["清晰", "Clarity"], reproducibility: ["复现", "Repro"],
+  };
+  METRICS.forEach((metric) => pushDelta(metricNames[metric][locale === "zh" ? 0 : 1], game.stats[metric] - before.stats[metric]));
+  const resourceNames = locale === "zh"
+    ? { gpu: "GPU", funding: "经费", mental: "精神", risk: "风险", days: "天数", focus: "专注" }
+    : { gpu: "GPU", funding: "Funding", mental: "Mental", risk: "Risk", days: "Days", focus: "Focus" };
+  (["gpu", "funding", "mental", "risk", "days", "focus"] as const).forEach((key) => pushDelta(resourceNames[key], game.resources[key] - before.resources[key], key === "risk"));
+
+  const conditionNames: Record<keyof GameState["conditions"], [string, string]> = {
+    caffeine: ["咖啡因", "Caffeine"], insight: ["洞见", "Insight"], technicalDebt: ["技术债", "Technical Debt"], reviewerFavor: ["审稿人好感", "Reviewer Favor"], pageDebt: ["版面债", "Page Debt"],
+    infrastructureDown: ["基础设施中断", "Infrastructure Down"], queueDelay: ["集群排队", "Queue Delay"], advisorPressure: ["导师压力", "Advisor Pressure"], coauthorTrust: ["合作者信任", "Coauthor Trust"], auditTrail: ["审计记录", "Audit Trail"],
+  };
+  const harmfulConditions = new Set<keyof GameState["conditions"]>(["technicalDebt", "pageDebt", "infrastructureDown", "queueDelay", "advisorPressure"]);
+  (Object.keys(conditionNames) as (keyof GameState["conditions"])[]).forEach((key) => pushDelta(conditionNames[key][locale === "zh" ? 0 : 1], game.conditions[key] - before.conditions[key], harmfulConditions.has(key)));
+
+  game.relics.filter((id) => !before.relics.includes(id)).forEach((id) => {
+    const relic = RELIC_BY_ID[id];
+    parts.push({ text: `${locale === "zh" ? "获得遗物" : "Relic gained"}: ${locale === "zh" ? relic?.name ?? id : relic?.en ?? id}`, tone: "gain" });
+  });
+  Object.entries(game.cardLevels).filter(([id, level]) => level > (before.cardLevels[id] ?? 0)).forEach(([id]) => {
+    const card = CARD_BY_ID[id];
+    parts.push({ text: `${locale === "zh" ? "卡牌升级" : "Card upgraded"}: ${locale === "zh" ? card?.name ?? id : card?.en ?? id}`, tone: "gain" });
+  });
+  const counts = (items: string[]) => items.reduce<Record<string, number>>((result, id) => ({ ...result, [id]: (result[id] ?? 0) + 1 }), {});
+  const beforeCards = counts(before.masterDeck);
+  const afterCards = counts(game.masterDeck);
+  [...new Set([...Object.keys(beforeCards), ...Object.keys(afterCards)])].forEach((id) => {
+    const difference = (afterCards[id] ?? 0) - (beforeCards[id] ?? 0);
+    if (!difference) return;
+    const card = CARD_BY_ID[id];
+    const cardName = locale === "zh" ? card?.name ?? id : card?.en ?? id;
+    const removedQuestionable = difference < 0 && card?.category === "questionable";
+    parts.push({
+      text: `${difference > 0 ? (locale === "zh" ? "获得卡牌" : "Card gained") : (locale === "zh" ? "移除卡牌" : "Card removed")}: ${cardName}${Math.abs(difference) > 1 ? ` ×${Math.abs(difference)}` : ""}`,
+      tone: difference > 0 || removedQuestionable ? "gain" : "cost",
+    });
+  });
+  return parts.length > 0 ? parts : [{ text: locale === "zh" ? "实际数值没有变化" : "No measurable value changed", tone: "neutral" }];
 }
 
 function upgradeDescription(card: (typeof CARD_BY_ID)[string], locale: Locale) {
@@ -281,8 +313,15 @@ export default function Game() {
   const [locale, setLocale] = useState<Locale>("zh");
   const [screen, setScreen] = useState<MenuScreen>("menu");
   const [selectedRole, setSelectedRole] = useState("method");
+  const [runSetup, setRunSetup] = useState<RunSetup>(DEFAULT_RUN_SETUP);
+  const [seedInput, setSeedInput] = useState("");
   const [game, setGame] = useState<GameState | null>(null);
   const [savedRun, setSavedRun] = useState<GameState | null>(null);
+  const [manualSaves, setManualSaves] = useState<ManualSaveMetadata[]>([]);
+  const [saveMode, setSaveMode] = useState<"save" | "load" | null>(null);
+  const [pauseOpen, setPauseOpen] = useState(false);
+  const [timelineOpen, setTimelineOpen] = useState(false);
+  const [exitNotice, setExitNotice] = useState(false);
   const [best, setBest] = useState<BestRun | null>(null);
   const [selectedCard, setSelectedCard] = useState<number | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -303,6 +342,7 @@ export default function Game() {
     const frame = window.requestAnimationFrame(() => {
       setBest(readBest());
       setSavedRun(loadRun());
+      setManualSaves(listManualRuns());
       try {
         const stored = window.localStorage.getItem(SOUND_KEY);
         if (stored === "off") setSoundOn(false);
@@ -390,14 +430,16 @@ export default function Game() {
   };
 
   const startRun = useCallback(
-    (roleId: string, seed = safeSeed()) => {
+    (roleId: string, seed = safeSeed(), setup: RunSetup = DEFAULT_RUN_SETUP) => {
       clearRun();
       setSavedRun(null);
       setSelectedCard(null);
       setTutorialOpen(true);
       setIsNewRecord(false);
       setLogOpen(false);
-      setGame(createGame(roleId, seed));
+      setPauseOpen(false);
+      setTimelineOpen(false);
+      setGame(createGame(roleId, seed, setup));
       playSound("paper");
     },
     [playSound],
@@ -409,7 +451,7 @@ export default function Game() {
       if (action.type === "PLAY_CARD") {
         setSelectedCard(null);
         playSound("paper");
-      } else if (action.type === "CHOOSE_EVENT") {
+      } else if (action.type === "COMPLETE_EVENT") {
         playSound("success");
       } else {
         playSound("paper");
@@ -417,6 +459,60 @@ export default function Game() {
     },
     [playSound],
   );
+
+  const refreshManualSaves = useCallback(() => setManualSaves(listManualRuns()), []);
+
+  const openSaveManager = useCallback((mode: "save" | "load") => {
+    refreshManualSaves();
+    setSaveMode(mode);
+  }, [refreshManualSaves]);
+
+  const saveToSlot = useCallback((slot: ManualSaveSlot) => {
+    if (!game || game.campaign.ironman) return;
+    const occupied = manualSaves.some((save) => save.slot === slot);
+    if (occupied && !window.confirm(locale === "zh" ? `覆盖档案 ${slot}？原存档会被替换。` : `Overwrite archive ${slot}? The previous save will be replaced.`)) return;
+    if (saveManualRun(slot, game)) {
+      refreshManualSaves();
+      playSound("stamp");
+    }
+  }, [game, locale, manualSaves, playSound, refreshManualSaves]);
+
+  const loadFromSlot = useCallback((slot: ManualSaveSlot) => {
+    if (game && !window.confirm(locale === "zh" ? "读取档案会用它替换当前自动存档。当前进度可先另存到手动槽。继续？" : "Loading this archive replaces the current autosave. You can save the current run to another slot first. Continue?")) return;
+    const loaded = loadManualRun(slot);
+    if (!loaded) return;
+    setGame(loaded);
+    setSavedRun(null);
+    setSelectedCard(null);
+    setPauseOpen(false);
+    setSaveMode(null);
+    setTimelineOpen(false);
+    playSound("paper");
+  }, [game, locale, playSound]);
+
+  const deleteSlot = useCallback((slot: ManualSaveSlot) => {
+    if (!window.confirm(locale === "zh" ? `删除档案 ${slot}？此操作无法撤销。` : `Delete archive ${slot}? This cannot be undone.`)) return;
+    deleteManualRun(slot);
+    refreshManualSaves();
+  }, [locale, refreshManualSaves]);
+
+  const returnToTitle = useCallback(() => {
+    if (game && game.phase !== "ended") {
+      saveRun(game);
+      setSavedRun(game);
+    }
+    setGame(null);
+    setPauseOpen(false);
+    setTimelineOpen(false);
+    setSaveMode(null);
+    setScreen("menu");
+  }, [game]);
+
+  const startConfiguredRun = useCallback(() => {
+    if (savedRun && !window.confirm(locale === "zh" ? "开始新游戏会替换当前自动存档。三个手动存档不会受影响。继续投稿？" : "Starting a new game replaces the current autosave. Your three manual archives are safe. Submit anyway?")) return;
+    const parsed = Number(seedInput);
+    startRun(selectedRole, Number.isSafeInteger(parsed) && parsed > 0 ? parsed : safeSeed(), runSetup);
+  }, [locale, runSetup, savedRun, seedInput, selectedRole, startRun]);
 
   const selectedPreview = useMemo(() => {
     if (!game || activeSelectedCard === null) return null;
@@ -451,11 +547,15 @@ export default function Game() {
         return;
       }
       if (event.key === "Escape") {
-        setHelpOpen(false);
+        if (saveMode) setSaveMode(null);
+        else if (timelineOpen) setTimelineOpen(false);
+        else if (helpOpen) setHelpOpen(false);
+        else if (pauseOpen) setPauseOpen(false);
+        else if (game?.phase === "playing") setPauseOpen(true);
         setLogOpen(false);
         return;
       }
-      if (!game || game.phase !== "playing" || helpOpen) return;
+      if (!game || game.phase !== "playing" || helpOpen || pauseOpen || timelineOpen || saveMode !== null) return;
       const number = Number(event.key);
       if (number >= 1 && number <= game.hand.length) {
         event.preventDefault();
@@ -473,7 +573,7 @@ export default function Game() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [activeSelectedCard, dispatch, game, helpOpen, playSelected]);
+  }, [activeSelectedCard, dispatch, game, helpOpen, pauseOpen, playSelected, saveMode, timelineOpen]);
 
   useEffect(() => {
     if (game?.phase === "ended") playSound("stamp");
@@ -586,9 +686,6 @@ export default function Game() {
             <h2>{c.menuTitle}</h2>
             <p>{c.menuDescription}</p>
             <div className="menu-actions">
-              <button type="button" className="primary-button" onClick={() => setScreen("roles")}>
-                {c.start} <span aria-hidden="true">→</span>
-              </button>
               {savedRun && (
                 <button
                   type="button"
@@ -602,7 +699,20 @@ export default function Game() {
                   {c.continue} · {savedRun.resources.days} {c.daysLeft}
                 </button>
               )}
+              <button type="button" className="primary-button" onClick={() => setScreen("setup")}>
+                {locale === "zh" ? "新游戏 · 配置投稿" : "New Game · Configure Submission"} <span aria-hidden="true">→</span>
+              </button>
+              <button type="button" className="secondary-button" disabled={manualSaves.length === 0} onClick={() => openSaveManager("load")}>
+                {locale === "zh" ? `读取存档 · ${manualSaves.length}/3` : `Load Archive · ${manualSaves.length}/3`}
+              </button>
+              <button type="button" className="secondary-button" onClick={() => setHelpOpen(true)}>
+                {locale === "zh" ? "帮助与结局档案" : "Help & Ending Archive"}
+              </button>
+              <button type="button" className="menu-exit-button" onClick={() => setExitNotice(true)}>
+                {locale === "zh" ? "退出游戏" : "Exit Game"}
+              </button>
             </div>
+            {exitNotice && <p className="exit-notice">{locale === "zh" ? "浏览器游戏无法关闭你的标签页——自动存档已完成，现在可以安心关闭页面。" : "A browser game cannot close your tab. Autosave is complete; it is safe to close this page."}</p>}
             <div className="menu-records">
               <span>
                 <small>{c.localHigh}</small>
@@ -610,11 +720,11 @@ export default function Game() {
               </span>
               <span>
                 <small>{c.mayMeet}</small>
-                <strong>{c.hiddenBoss}</strong>
+                <strong>{CARDS.length} {locale === "zh" ? "张卡" : "cards"}</strong>
               </span>
               <span>
                 <small>{c.dangerous}</small>
-                <strong>{c.consequences}</strong>
+                <strong>{EVENTS.length} {locale === "zh" ? "个故事" : "stories"}</strong>
               </span>
             </div>
           </div>
@@ -625,66 +735,16 @@ export default function Game() {
           <span>{c.version}</span>
         </footer>
         {helpOpen && <HelpModal locale={locale} onClose={() => setHelpOpen(false)} />}
+        {saveMode && <SaveManagerModal locale={locale} mode={saveMode} game={null} saves={manualSaves} onClose={() => setSaveMode(null)} onSave={saveToSlot} onLoad={loadFromSlot} onDelete={deleteSlot} />}
       </main>
     );
   }
 
-  if (!game && screen === "roles") {
-    const role = ROLE_BY_ID[selectedRole];
-    return (
-      <main className="app-shell roles-shell">
-        <header className="site-header">
-          <button type="button" className="brand-lockup brand-button" onClick={() => setScreen("menu")}>
-            <span className="brand-mark">R2</span>
-            <span>
-              <strong>{c.selectManuscript}</strong>
-              <small>{c.chooseManuscript}</small>
-            </span>
-          </button>
-          <div className="header-actions">
-            <button type="button" className="language-toggle" onClick={toggleLocale}>
-              {locale === "zh" ? "EN" : "中"}
-            </button>
-            <button type="button" className="text-button" onClick={() => setScreen("menu")}>
-              {c.back}
-            </button>
-            <button type="button" className="icon-button" onClick={() => setHelpOpen(true)} aria-label={c.help}>
-              ?
-            </button>
-          </div>
-        </header>
-        <section className="role-select-section">
-          <div className="section-heading">
-            <p className="eyebrow">SELECT A MANUSCRIPT</p>
-            <h1>{c.roleHeading}</h1>
-          </div>
-          <div className="role-grid">
-            {ROLES.map((item) => (
-              <RoleCard
-                role={item}
-                selected={item.id === selectedRole}
-                onSelect={() => setSelectedRole(item.id)}
-                locale={locale}
-                key={item.id}
-              />
-            ))}
-          </div>
-          <div className="role-confirm-bar">
-            <div>
-              <span className="confirm-symbol">{role.symbol}</span>
-              <span>
-                <small>{c.currentChoice}</small>
-                <strong>{locale === "zh" ? role.name : role.en}</strong>
-              </span>
-            </div>
-            <button type="button" className="primary-button" onClick={() => startRun(role.id)}>
-              {c.submit} <span aria-hidden="true">→</span>
-            </button>
-          </div>
-        </section>
-        {helpOpen && <HelpModal locale={locale} onClose={() => setHelpOpen(false)} />}
-      </main>
-    );
+  if (!game && screen === "setup") {
+    return <>
+      <NewGameSetup locale={locale} setup={runSetup} selectedRole={selectedRole} seed={seedInput} onSetup={setRunSetup} onRole={setSelectedRole} onSeed={setSeedInput} onStart={startConfiguredRun} onBack={() => setScreen("menu")} onHelp={() => setHelpOpen(true)} onToggleLocale={toggleLocale} />
+      {helpOpen && <HelpModal locale={locale} onClose={() => setHelpOpen(false)} />}
+    </>;
   }
 
   if (!game) return null;
@@ -695,6 +755,11 @@ export default function Game() {
   const route = getCurrentRoute(game);
   const requirements = getIssueRequirements(game);
   const event = getActiveEvent(game);
+  const eventChoice = event && game.eventFlow?.choiceId
+    ? event.choices.find((choice) => choice.id === game.eventFlow?.choiceId)
+    : null;
+  const eventDialogue = eventChoice ? getEventDialogue(eventChoice, event ?? undefined) : [];
+  const eventBeat = eventDialogue[Math.min(game.eventFlow?.beatIndex ?? 0, Math.max(0, eventDialogue.length - 1))];
   const selectedInstance = game.hand.find((card) => card.instanceId === activeSelectedCard);
   const selectedDefinition = selectedInstance ? CARD_BY_ID[selectedInstance.cardId] : null;
   const progressPercent = Math.min(100, (game.issue.progress / game.issue.difficulty) * 100);
@@ -749,6 +814,12 @@ export default function Game() {
           </button>
           <button type="button" className="icon-button" onClick={() => setLogOpen((open) => !open)} aria-label={c.log}>
             ≡
+          </button>
+          <button type="button" className="icon-button timeline-button" onClick={() => setTimelineOpen(true)} aria-label={locale === "zh" ? "投稿时间线" : "Submission timeline"}>
+            ◷
+          </button>
+          <button type="button" className="icon-button" onClick={() => setPauseOpen(true)} aria-label={locale === "zh" ? "暂停菜单" : "Pause menu"}>
+            Ⅱ
           </button>
           <button type="button" className="icon-button" onClick={toggleSound} aria-label={soundOn ? c.soundOff : c.soundOn}>
             {soundOn ? "♪" : "×♪"}
@@ -1180,31 +1251,48 @@ export default function Game() {
 
       {game.phase === "event" && event && (
         <div className="modal-backdrop event-backdrop">
-          <section className="event-dialog" role="dialog" aria-modal="true" aria-labelledby="event-title">
+          <section className={`event-dialog story-event-dialog phase-${game.eventFlow?.status ?? "choice"}`} role="dialog" aria-modal="true" aria-labelledby="event-title">
             <span className="event-label">{c.randomEvent.toUpperCase()} · {c.remaining.toUpperCase()} {game.resources.days}</span>
             <div className="event-icon" aria-hidden="true">
               {event.icon}
             </div>
             <h2 id="event-title">{eventTitle(event, locale)}</h2>
-            <p>{eventDescription(event, locale)}</p>
-            <div className="event-choices">
-              {event.choices.map((choice) => {
-                const playable = canChooseEvent(game, choice);
-                return (
-                  <button
-                    type="button"
-                    key={choice.id}
-                    disabled={!playable}
-                    onClick={() => dispatch({ type: "CHOOSE_EVENT", eventId: event.id, choiceId: choice.id })}
-                  >
-                    <strong>{eventChoiceText(event, choice, "label", locale)}</strong>
-                    <span>{eventChoiceText(event, choice, "hint", locale)}</span>
-                    {!playable && <small>{c.notEnough}</small>}
-                  </button>
-                );
-              })}
-            </div>
-            <small className="event-footnote">{c.eventFootnote}</small>
+            {game.eventFlow?.status === "choice" && <>
+              <p className="event-opening-copy">{eventDescription(event, locale)}</p>
+              <div className="sealed-outcome-note"><span>CONFIDENTIAL</span>{locale === "zh" ? "收益与代价已封存；事件结束后统一揭晓。" : "Costs and rewards are sealed until the scene concludes."}</div>
+              <div className="event-choices hidden-outcomes">
+                {event.choices.map((choice) => {
+                  const playable = canChooseEvent(game, choice);
+                  return (
+                    <button type="button" key={choice.id} disabled={!playable} onClick={() => dispatch({ type: "CHOOSE_EVENT", eventId: event.id, choiceId: choice.id })}>
+                      <strong>{eventChoiceText(event, choice, "label", locale)}</strong>
+                      <span>{locale === "zh" ? "选择后进入事件对话 · 后果未知" : "Continue into the scene · outcome unknown"}</span>
+                      {!playable && <small>{c.notEnough}</small>}
+                    </button>
+                  );
+                })}
+              </div>
+              <small className="event-footnote">{c.eventFootnote}</small>
+            </>}
+            {game.eventFlow?.status === "dialogue" && eventChoice && eventBeat && <div className="event-dialogue-panel" key={`${event.id}:${game.eventFlow.beatIndex}`}>
+              <div className="dialogue-progress">{eventDialogue.map((_beat, index) => <i className={index <= (game.eventFlow?.beatIndex ?? 0) ? "is-read" : ""} key={index} />)}</div>
+              <div className="speaker-tag">{locale === "zh" ? eventBeat.speaker : eventBeat.speakerEn ?? eventBeat.speaker}</div>
+              <blockquote>{locale === "zh" ? eventBeat.text : eventBeat.textEn ?? eventBeat.text}</blockquote>
+              {(eventBeat.aside || eventBeat.asideEn) && <p>{locale === "zh" ? eventBeat.aside : eventBeat.asideEn ?? eventBeat.aside}</p>}
+              <button type="button" className="primary-button dialogue-next" onClick={() => dispatch({ type: "ADVANCE_EVENT" })}>
+                {game.eventFlow.beatIndex < eventDialogue.length - 1 ? (locale === "zh" ? "继续对话" : "Continue scene") : (locale === "zh" ? "拆开结果信封" : "Open the outcome envelope")} <span>→</span>
+              </button>
+            </div>}
+            {game.eventFlow?.status === "reveal" && eventChoice && <div className="event-reveal-panel">
+              <div className="reveal-stamp">RESULT</div>
+              <small>{locale === "zh" ? "事件结算报告" : "EVENT RESOLUTION REPORT"}</small>
+              <h3>{eventChoiceText(event, eventChoice, "label", locale)}</h3>
+              <p>{eventChoiceText(event, eventChoice, "result", locale)}</p>
+              <div className="event-outcome-chips">
+                {eventOutcomeParts(game, eventChoice, locale).map((part, index) => <span className={`is-${part.tone}`} key={`${part.text}:${index}`}>{part.text}</span>)}
+              </div>
+              <button type="button" className="primary-button" onClick={() => dispatch({ type: "COMPLETE_EVENT" })}>{locale === "zh" ? "归档并继续返修" : "File report & continue"} <span>→</span></button>
+            </div>}
           </section>
         </div>
       )}
@@ -1259,10 +1347,10 @@ export default function Game() {
               </button>
             </div>
             <div className="ending-restart">
-              <button type="button" onClick={() => startRun(game.roleId)}>
+              <button type="button" onClick={() => startRun(game.roleId, safeSeed(), game.campaign)}>
                 {c.retry}
               </button>
-              <button type="button" onClick={() => startRun(game.roleId, game.seed)}>
+              <button type="button" disabled={game.campaign.ironman} title={game.campaign.ironman ? (locale === "zh" ? "铁人模式不可重放同一 Seed" : "Ironman disables same-seed retries") : undefined} onClick={() => startRun(game.roleId, game.seed, game.campaign)}>
                 {c.retrySeed}
               </button>
               <button
@@ -1279,6 +1367,9 @@ export default function Game() {
         </div>
       )}
 
+      {pauseOpen && <PauseModal locale={locale} game={game} onContinue={() => setPauseOpen(false)} onSave={() => { setPauseOpen(false); openSaveManager("save"); }} onLoad={() => { setPauseOpen(false); openSaveManager("load"); }} onTimeline={() => { setPauseOpen(false); setTimelineOpen(true); }} onHelp={() => { setPauseOpen(false); setHelpOpen(true); }} onTitle={returnToTitle} />}
+      {timelineOpen && <TimelineDrawer game={game} locale={locale} onClose={() => setTimelineOpen(false)} />}
+      {saveMode && <SaveManagerModal locale={locale} mode={saveMode} game={game} saves={manualSaves} onClose={() => setSaveMode(null)} onSave={saveToSlot} onLoad={loadFromSlot} onDelete={deleteSlot} />}
       {helpOpen && <HelpModal locale={locale} onClose={() => setHelpOpen(false)} />}
       <canvas className="share-canvas" ref={canvasRef} aria-hidden="true" />
     </main>
@@ -1313,10 +1404,30 @@ function HelpModal({ onClose, locale }: { onClose: () => void; locale: Locale })
           </article>
           <article>
             <span>04</span>
-            <h3>{c.defeatRounds}</h3>
-            <p>{c.defeatRoundsBody}</p>
+            <h3>{locale === "zh" ? "经历事件故事" : "Live through event stories"}</h3>
+            <p>{locale === "zh" ? "事件先让你做决定，再展开 1–3 轮对话；数值后果会在故事结束后揭晓并写入投稿时间线。" : "Events ask for a decision, unfold over 1–3 dialogue beats, then reveal their numerical consequences and enter the submission timeline."}</p>
+          </article>
+          <article>
+            <span>05</span>
+            <h3>{locale === "zh" ? "管理投稿档案" : "Manage the manuscript archive"}</h3>
+            <p>{locale === "zh" ? "游戏持续自动存档；暂停菜单提供三个手动槽。铁人模式保留防崩溃存档，但禁止回档。" : "The run continuously autosaves; the pause menu provides three manual slots. Ironman keeps crash recovery but disables rollback."}</p>
+          </article>
+          <article>
+            <span>06</span>
+            <h3>{locale === "zh" ? "寻找十六种结局" : "Discover sixteen endings"}</h3>
+            <p>{locale === "zh" ? "高质量、零风险、开放科学、极速投稿、最后一分钟与隐藏合作者都有专属 Decision Letter。" : "High quality, zero risk, open science, speedruns, last-minute uploads, and the hidden coauthor each have dedicated decision letters."}</p>
           </article>
         </div>
+        <details className="ending-guide">
+          <summary>{locale === "zh" ? "查看结局线索（含轻微剧透）" : "Ending clues (light spoilers)"}</summary>
+          <div>
+            <p><b>BEST PAPER</b> {locale === "zh" ? "四项指标都极高、低风险，并积累足够精准回复。" : "Exceptional scores in every metric, low risk, and many precise replies."}</p>
+            <p><b>OPEN SCIENCE</b> {locale === "zh" ? "报告负结果，同时保持高复现和极低风险。" : "Report negative results while maintaining high reproducibility and very low risk."}</p>
+            <p><b>REPRODUCED / CLEAN</b> {locale === "zh" ? "追求满复现，或在不碰危险牌的前提下零风险接收。" : "Maximize reproducibility, or finish at zero risk without questionable cards."}</p>
+            <p><b>FAST TRACK / 23:59</b> {locale === "zh" ? "浓缩返修提前完成，或在最后一天完成。" : "Finish Espresso early, or complete the paper on its final day."}</p>
+            <p><b>MINOR / MAJOR / R&amp;R</b> {locale === "zh" ? "截止时未完全解决，但进度和论文质量达到不同门槛。" : "Reach different progress and quality thresholds when time expires."}</p>
+          </div>
+        </details>
         <div className="shortcut-list">
           <span>
             <kbd>1–6</kbd> {c.selectCard}

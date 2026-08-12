@@ -1034,8 +1034,8 @@ const ROLE_PLANS: RolePlan[] = [
     deckCapabilities: ["responseWriting", "claimFraming", "visualization"],
   },
   {
-    id: "interdisciplinary", name: "跨学科论文", en: "Interdisciplinary Paper", symbol: "X",
-    pitch: "每个领域都觉得另外两个领域解释得不够。", pitchEn: "Every field believes the other two are under-explained.",
+    id: "interdisciplinary", name: "跨领域联盟论文", en: "Cross-Field Consortium Paper", symbol: "X",
+    pitch: "每个合作领域都觉得另外两个领域解释得不够。", pitchEn: "Every partner field believes the other two are under-explained.",
     passive: "逐条回复额外 +2 回应，起始手牌 +1。", passiveEn: "Response writing gains +2 Response; opening hand +1.",
     weakness: "精神资源较紧。", weaknessEn: "Mental Health is tighter than usual.",
     stats: { novelty: 4, evidence: 3, clarity: 3, reproducibility: 3 }, resources: { gpu: 10, funding: 9, mental: 12 },

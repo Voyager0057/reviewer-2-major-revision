@@ -11,10 +11,12 @@ import {
 import {
   canChooseEvent,
   createGame,
+  ENDING_IDS,
   gameReducer,
   getActiveEvent,
   getCardPreview,
   getCampaignConfig,
+  getEventDialogue,
   getIssueRequirements,
   nextRandom,
 } from "../app/game/engine";
@@ -27,7 +29,8 @@ import {
   eventTitle,
   roleText,
 } from "../app/game/i18n";
-import type { GameState } from "../app/game/types";
+import { CAMPAIGN_LENGTHS, DIFFICULTIES } from "../app/game/settings";
+import type { GameState, RunSetup } from "../app/game/types";
 
 function acceptFirstReward(state: GameState) {
   if (state.phase !== "reward") return state;
@@ -137,9 +140,15 @@ function autoplay(seed: number, roleId: string) {
     } else if (state.phase === "event") {
       const event = getActiveEvent(state);
       assert.ok(event);
-      const choice = event.choices.find((item) => canChooseEvent(state, item));
-      assert.ok(choice);
-      state = gameReducer(state, { type: "CHOOSE_EVENT", eventId: event.id, choiceId: choice.id });
+      if (state.eventFlow?.status === "choice") {
+        const choice = event.choices.find((item) => canChooseEvent(state, item));
+        assert.ok(choice);
+        state = gameReducer(state, { type: "CHOOSE_EVENT", eventId: event.id, choiceId: choice.id });
+      } else if (state.eventFlow?.status === "dialogue") {
+        state = gameReducer(state, { type: "ADVANCE_EVENT" });
+      } else {
+        state = gameReducer(state, { type: "COMPLETE_EVENT" });
+      }
     } else {
       const playable = state.hand
         .map((card) => ({ card, preview: getCardPreview(state, card.instanceId) }))
@@ -230,17 +239,144 @@ test("expanded content is large, unique, linked, and fully bilingual", () => {
       assert.ok(!containsHan(eventChoiceText(event, choice, "label", "en")), `${event.id}.${choice.id}`);
       assert.ok(!containsHan(eventChoiceText(event, choice, "hint", "en")), `${event.id}.${choice.id}`);
       assert.ok(!containsHan(eventChoiceText(event, choice, "result", "en")), `${event.id}.${choice.id}`);
+      for (const beat of getEventDialogue(choice, event)) {
+        assert.ok(!containsHan(beat.textEn ?? beat.text), `${event.id}.${choice.id} dialogue`);
+      }
     }
   }
 });
 
-test("the campaign and content pools are at least four times the previous game", () => {
+test("the expanded campaign preserves defaults and doubles cards and story events", () => {
   assert.deepEqual(getCampaignConfig(), { days: 48, target: 40, handSize: 7 });
-  assert.equal(CARDS.length, 264);
-  assert.equal(EVENTS.length, 128);
+  assert.equal(CARDS.length, 528);
+  assert.equal(EVENTS.length, 256);
+  assert.equal(ENDING_IDS.length, 16);
+  assert.equal(new Set(ENDING_IDS).size, 16);
   assert.equal(COMMENTS.length, 160);
   assert.equal(ROLES.length, 20);
   assert.equal(RELICS.length, 48);
+});
+
+test("all difficulty and campaign presets create deterministic bounded runs", () => {
+  for (const difficulty of DIFFICULTIES) {
+    for (const length of CAMPAIGN_LENGTHS) {
+      const setup = { difficultyId: difficulty.id, lengthId: length.id, ironman: false } as const;
+      const first = createGame("method", 4242, setup);
+      const second = createGame("method", 4242, setup);
+      assert.deepEqual(first, second);
+      assert.equal(first.campaign.difficultyId, difficulty.id);
+      assert.equal(first.campaign.lengthId, length.id);
+      assert.equal(first.target, length.target);
+      assert.ok(first.resources.days >= length.days);
+      assert.ok(first.resources.gpu >= 0 && first.resources.gpu <= 96);
+      assert.ok(first.resources.funding >= 0 && first.resources.funding <= 60);
+    }
+  }
+  const custom = createGame("clinical", 99, { difficultyId: "reviewer_two", lengthId: "custom", ironman: true, customDays: 999, customTarget: 1, customEventEvery: 20 });
+  assert.equal(custom.campaign.totalDays, 120);
+  assert.equal(custom.campaign.baseTarget, 10);
+  assert.equal(custom.campaign.eventEvery, 6);
+  assert.equal(custom.campaign.ironman, true);
+});
+
+test("story events lock a choice, play dialogue, and reveal effects only at the end", () => {
+  const initial = playableRun("method", 8128);
+  const event = EVENTS.find((item) => item.choices.some((choice) => choice.story?.length === 3));
+  assert.ok(event);
+  const state: GameState = {
+    ...initial,
+    phase: "event",
+    activeEventId: event.id,
+    eventFlow: { eventId: event.id, choiceId: null, beatIndex: 0, status: "choice" },
+    resources: { ...initial.resources, focus: 8, gpu: 96, funding: 60, mental: 24 },
+  };
+  const choice = event.choices.find((item) => canChooseEvent(state, item));
+  assert.ok(choice);
+  const before = structuredClone({ stats: state.stats, resources: state.resources, conditions: state.conditions });
+  const chosen = gameReducer(state, { type: "CHOOSE_EVENT", eventId: event.id, choiceId: choice.id });
+  assert.equal(chosen.eventFlow?.status, "dialogue");
+  assert.deepEqual(chosen.eventFlow?.before?.stats, before.stats);
+  assert.deepEqual(chosen.eventFlow?.before?.resources, before.resources);
+  assert.deepEqual({ stats: chosen.stats, resources: chosen.resources, conditions: chosen.conditions }, before);
+  assert.deepEqual(gameReducer(chosen, { type: "CHOOSE_EVENT", eventId: event.id, choiceId: choice.id }), chosen);
+
+  let dialogue = chosen;
+  for (let index = 1; index < (choice.story?.length ?? 1); index += 1) {
+    dialogue = gameReducer(dialogue, { type: "ADVANCE_EVENT" });
+    assert.equal(dialogue.eventFlow?.status, "dialogue");
+    assert.deepEqual({ stats: dialogue.stats, resources: dialogue.resources, conditions: dialogue.conditions }, before);
+  }
+  const revealed = gameReducer(dialogue, { type: "ADVANCE_EVENT" });
+  assert.equal(revealed.eventFlow?.status, "reveal");
+  assert.equal(revealed.runStats.eventsCompleted, initial.runStats.eventsCompleted + 1);
+  assert.notDeepEqual({ stats: revealed.stats, resources: revealed.resources, conditions: revealed.conditions }, before);
+  assert.deepEqual(gameReducer(revealed, { type: "ADVANCE_EVENT" }), revealed);
+  const completed = gameReducer(revealed, { type: "COMPLETE_EVENT" });
+  assert.equal(completed.phase, "playing");
+  assert.equal(completed.activeEventId, null);
+  assert.equal(completed.eventFlow, null);
+});
+
+test("event outcome snapshots preserve the exact post-relic settlement", () => {
+  const initial = playableRun("method", 9012);
+  const event = EVENTS.find((item) => item.id === "gpu-oom");
+  const choice = event?.choices.find((item) => item.id === "debug");
+  assert.ok(event && choice);
+  const state: GameState = {
+    ...initial,
+    phase: "event",
+    activeEventId: event.id,
+    eventFlow: { eventId: event.id, choiceId: null, beatIndex: 0, status: "choice" },
+    relics: [...new Set([...initial.relics, "mega-relic-backup-generator"])],
+    resources: { ...initial.resources, mental: 11 },
+  };
+  const chosen = gameReducer(state, { type: "CHOOSE_EVENT", eventId: event.id, choiceId: choice.id });
+  const revealed = gameReducer(chosen, { type: "ADVANCE_EVENT" });
+  assert.equal(revealed.eventFlow?.status, "reveal");
+  assert.equal(revealed.eventFlow?.before?.resources.mental, 11);
+  assert.equal(revealed.resources.mental, 11);
+  assert.equal(revealed.stats.reproducibility, Math.min(15, state.stats.reproducibility + 2));
+});
+
+function completePaper(overrides: Partial<GameState>, setup: RunSetup = { difficultyId: "major", lengthId: "standard", ironman: false }) {
+  const initial = playableRun("method", 1701);
+  const configured = setup.lengthId === "standard" ? initial : acceptFirstReward(createGame("method", 1701, setup));
+  const comment = COMMENTS.find((item) => item.id === "r1-figure");
+  const card = CARD_BY_ID["better-figure"];
+  assert.ok(comment && card);
+  let state: GameState = {
+    ...configured,
+    phase: "playing",
+    resolved: configured.target - 1,
+    rewardOffers: [],
+    rewardReason: null,
+    hand: [{ instanceId: 99001, cardId: card.id }],
+    resources: { ...configured.resources, days: 5, focus: 8, gpu: 96, funding: 60, mental: 12, risk: 10 },
+    stats: { novelty: 6, evidence: 8, clarity: 6, reproducibility: 8 },
+    runStats: { ...configured.runStats, dangerousPlayed: 0, negativeResults: 0, perfectReplies: 0 },
+    issue: { commentId: comment.id, routeId: "verify", progress: 0, difficulty: comment.difficulty, escalations: 0, capabilityProgress: {}, extraRequirements: [], followUps: 0 },
+    ...overrides,
+  };
+  const requirements = getIssueRequirements(state);
+  const matched = requirements.find((item) => (card.provides?.[item.capability] ?? 0) > 0);
+  assert.ok(matched);
+  const capabilityProgress = Object.fromEntries(requirements.map((item) => [item.capability, item.target]));
+  capabilityProgress[matched.capability] = matched.target - 1;
+  const difficulty = requirements.reduce((sum, item) => sum + item.target, 0);
+  state = { ...state, issue: { ...state.issue, difficulty, progress: difficulty - 1, capabilityProgress } };
+  return gameReducer(state, { type: "PLAY_CARD", instanceId: 99001 });
+}
+
+test("the expanded acceptance system exposes distinct special endings", () => {
+  assert.equal(completePaper({ stats: { novelty: 12, evidence: 12, clarity: 12, reproducibility: 12 }, runStats: { cardsPlayed: 0, dangerousPlayed: 0, perfectReplies: 8, negativeResults: 0, maxDailySolved: 0, strangestEvent: "", eventsCompleted: 0 } }).ending?.id, "best_paper");
+  assert.equal(completePaper({ stats: { novelty: 5, evidence: 10, clarity: 7, reproducibility: 10 }, resources: { gpu: 96, funding: 60, mental: 12, risk: 5, days: 5, focus: 8 }, runStats: { cardsPlayed: 0, dangerousPlayed: 0, perfectReplies: 0, negativeResults: 1, maxDailySolved: 0, strangestEvent: "", eventsCompleted: 0 } }).ending?.id, "open_science");
+  assert.equal(completePaper({ stats: { novelty: 5, evidence: 12, clarity: 5, reproducibility: 15 } }).ending?.id, "replication_legend");
+  assert.equal(completePaper({ resources: { gpu: 96, funding: 60, mental: 12, risk: 0, days: 5, focus: 8 } }).ending?.id, "clean_review");
+  assert.equal(completePaper({}, { difficultyId: "major", lengthId: "espresso", ironman: false }).ending?.id, "speedrun");
+  assert.equal(completePaper({ resources: { gpu: 96, funding: 60, mental: 12, risk: 10, days: 1, focus: 8 } }).ending?.id, "last_minute");
+  assert.equal(completePaper({ resources: { gpu: 96, funding: 60, mental: 1, risk: 10, days: 5, focus: 8 } }).ending?.id, "survivor_accept");
+  assert.equal(completePaper({ hiddenBoss: true }).ending?.id, "coauthor_ending");
+  assert.equal(completePaper({}).ending?.id, "accepted");
 });
 
 test("off-topic cards cannot damage a review task while matching cards advance exact steps", () => {
@@ -311,6 +447,6 @@ test("event choices cannot spend unavailable Focus", () => {
   const event = EVENTS.find((item) => item.id === "coffee-broken");
   const choice = event?.choices.find((item) => item.id === "repair");
   assert.ok(event && choice);
-  const state: GameState = { ...initial, phase: "event", activeEventId: event.id, resources: { ...initial.resources, focus: 0 } };
+  const state: GameState = { ...initial, phase: "event", activeEventId: event.id, eventFlow: { eventId: event.id, choiceId: null, beatIndex: 0, status: "choice" }, resources: { ...initial.resources, focus: 0 } };
   assert.equal(canChooseEvent(state, choice), false);
 });

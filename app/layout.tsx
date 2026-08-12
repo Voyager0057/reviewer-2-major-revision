@@ -18,11 +18,11 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: new URL(origin),
     title: "Reviewer #2: Major Revision",
     description:
-      "中英双语学术生存卡牌 Roguelike：264 张卡、160 条意见与三条解决路线，让每个行动真正对应审稿要求。",
+      "中英双语学术生存卡牌 Roguelike：528 张卡、256 个故事、160 条能力关联意见、5 档难度与 16 个结局。",
     applicationName: "Reviewer #2: Major Revision",
     openGraph: {
       title: "Reviewer #2: Major Revision",
-      description: "48 天完整投稿战役：用能力匹配卡牌完成审稿任务，处理服务器、导师与合作者制造的 128 种事件。",
+      description: "配置论文、难度与返修周期；在 256 个隐藏后果互动故事中对抗 Reviewer #2，并寻找 16 种结局。",
       type: "website",
       locale: "zh_CN",
       alternateLocale: ["en_US"],
@@ -31,7 +31,7 @@ export async function generateMetadata(): Promise<Metadata> {
     twitter: {
       card: "summary_large_image",
       title: "Reviewer #2: Major Revision",
-      description: "A bilingual academic-survival deckbuilder with capability-linked cards, 160 review tasks, and a 48-day campaign.",
+      description: "A bilingual academic-survival deckbuilder with 528 cards, 256 interactive stories, configurable campaigns, local save slots, and 16 endings.",
       images: [socialImage],
     },
   };

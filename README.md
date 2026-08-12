@@ -1,6 +1,6 @@
 # Reviewer #2: Major Revision
 
-> **48 天。40+ 条审稿意见。有限的 GPU、经费和精神状态。**  
+> **5 档审稿强度。6 种返修周期。528 张行动卡。256 个互动故事事件。**
 > 你能在 Reviewer #2 改完所有要求之前，活着拿到 Decision Letter 吗？
 
 [![Reviewer #2: Major Revision 游戏封面](public/og.png)](https://voyager0057.github.io/reviewer-2-major-revision/)
@@ -21,7 +21,9 @@
 
 《Reviewer #2: Major Revision》是一款中英双语的学术生存卡牌 Roguelike。
 
-你扮演一名正在经历 Major Revision 的研究生，需要在截止日期前处理不断追加的审稿意见。每一天都要决定：把 GPU 用在外部验证还是消融实验？先补统计检验还是重画 Figure 2？诚实报告失败实验，还是冒险调整随机种子？
+你扮演一名正在经历 Major Revision 的研究生，需要在截止日期前处理不断追加的审稿意见。新游戏不再随机把你扔进一篇论文：你会先填写一份“投稿配置表”，选择论文类型、五档难度、返修周期、随机种子、自定义规则与铁人模式。
+
+每一天都要决定：把 GPU 用在外部验证还是消融实验？先补统计检验还是重画 Figure 2？诚实报告失败实验，还是冒险调整随机种子？事件中的选择不再提前展示收益；你需要先作决定，经历 1–3 轮对话，最后才能拆开结算信封。
 
 审稿意见不是一条等待扣血的随机血条。每条意见都有具体的能力要求，例如：
 
@@ -38,18 +40,19 @@
 
 ![Reviewer #2 主菜单与完整投稿战役入口](public/readme/menu.jpg)
 
-*从论文封面开始你的 48 天完整投稿战役。*
+*从论文封面进入主菜单，再配置属于你的投稿战役。*
 
 ![Reviewer #2 审稿意见、解决路线与行动卡界面](public/readme/gameplay.jpg)
 
 *读懂审稿意见，选择解决路线，再用能力真正匹配的行动卡推进具体步骤。*
 
-## 四步上手
+## 五步上手
 
-1. **选择论文流派**：每种论文都有独特的初始牌组、优势和弱点。
+1. **配置投稿战役**：选择论文流派、评审难度、返修周期、铁人模式或自定义参数。
 2. **读懂审稿意见**：查看主要问题，并从“完整核验”“收窄主张”“透明回应”中选择解决路线。
 3. **匹配行动能力**：寻找能推进当前路线步骤的卡牌，再考虑资源成本和出牌顺序。
-4. **承担研究后果**：结束一天、处理突发事件，在截止日期、精神状态和撤稿风险之间求生。
+4. **承担研究后果**：在不预知数值的情况下处理互动事件，通过 1–3 轮对话看到故事结果。
+5. **建立投稿档案**：用投稿时间线回看关键节点，或使用自动存档与三个手动槽继续战役。
 
 严谨牌、实验牌和写作牌可以形成连锁；精准完成回应会获得额外收益。如果手牌完全不对题，可以花费 1 点专注进行一次“定向检索”。
 
@@ -66,16 +69,52 @@
 
 行动还会消耗 GPU、Funding、Focus 和剩余天数。高风险操作可能短期见效，但会留下技术债，并让后续的数据审计和复现问题更加危险。
 
+## 新游戏配置
+
+### 五档评审强度
+
+- **友善预审**：资源宽裕、意见标准较低，适合第一次投稿
+- **建设性意见**：完整玩法，但压力稍低
+- **标准大修**：推荐的原版平衡
+- **二号审稿人解封**：意见更难、资源更紧、拖延更痛
+- **编辑部炼狱**：频繁事件与极少资源，换取最高分数倍率
+
+### 六种返修周期
+
+| 模式 | 规模 | 预计单局时间 |
+| --- | --- | --- |
+| 浓缩返修 | 18 天 / 14 条意见 | 12–20 分钟 |
+| 会议冲刺 | 30 天 / 24 条意见 | 25–40 分钟 |
+| 标准大修 | 48 天 / 40 条意见 | 45–70 分钟 |
+| 期刊马拉松 | 72 天 / 60 条意见 | 70–105 分钟 |
+| 无限补实验 | 96 天 / 80 条意见 | 100–150 分钟 |
+| 自定义审稿合同 | 12–120 天 / 10–100 条意见 | 由你决定 |
+
+铁人模式保留防浏览器崩溃的自动存档，但禁用手动存档与同 Seed 回档。它是荣誉制——毕竟玩家仍然拥有开发者工具。
+
+## 互动事件与投稿时间线
+
+事件现在是一段短篇学术喜剧，而不是立刻增减数值的弹窗：
+
+1. 实验室断电、服务器维护、导师突袭、数据漂移、合作者失联等事件发生。
+2. 玩家只看到行动选择，看不到准确收益与代价。
+3. 选择后展开 1–3 轮中英文角色对话。
+4. 故事结束后，统一揭示资源、属性、风险和持续状态变化。
+5. 关键选择会写入独立的“投稿时间线”，与逐张出牌的行动日志分开保存。
+
+256 个事件分布在基础设施、集群、导师、合作者、数据、统计、投稿系统、伦理、经费、开放科学、研究者状态、学术竞争等故事线上。
+
 ## 游戏内容
 
-- **264 张行动卡**：实验、统计、写作、复现、协作与危险操作
+- **528 张行动卡**：实验、统计、写作、复现、协作与危险操作；每张都包含双语规则、风味文本和明确能力标签
 - **160 条审稿意见**：与卡牌能力和解决路线直接关联
-- **128 个随机事件**：断电、服务器维修、GPU OOM、导师突袭、合作者失联、数据异常等
+- **256 个互动故事事件**：每个提供隐藏后果选择，新增事件拥有三轮双语对话
 - **20 种论文流派**：不同初始牌组、被动效果和先天弱点
 - **48 件研究遗物**与 **40 项修稿任务**
-- 最长 **48 天**的完整投稿战役
+- **5 档难度、6 种周期**，最长 96 天；自定义模式可设为 120 天
 - Reviewer #1、Reviewer #2、Associate Editor、Camera Ready 与隐藏 Coauthor Boss
-- 本地自动存档、最高分、随机种子与结局分享卡
+- **16 种结局**：Best Paper、开放科学、复现传奇、零风险接收、速通、23:59 投稿、隐藏合作者、小修、大修、R&R 等
+- 投稿时间线、行动日志、本地自动存档、三个手动存档槽、最高分、随机种子与结局分享卡
 
 ## 新手提示
 
@@ -91,7 +130,11 @@
 
 ## 存档说明
 
-游戏会自动把当前进度和最高分保存在浏览器本机，不会上传任何个人数据。
+游戏会自动把当前进度和最高分保存在浏览器本机，并提供三个独立的手动存档槽，不会上传任何个人数据。
+
+- 点击游戏顶部的暂停按钮，可以继续、手动存档、打开时间线、查看帮助或保存并返回主菜单。
+- 主菜单的“读取存档”可以查看三个档案的论文类型、进度、剩余天数、难度和保存时间。
+- 铁人模式不能使用手动槽，但会继续自动保存，避免意外关闭页面导致整局消失。
 
 - 在线版与离线版通常拥有各自独立的存档。
 - 清理浏览器网站数据或更换浏览器后，原存档可能无法继续使用。
@@ -111,7 +154,9 @@
 - [Play online](https://voyager0057.github.io/reviewer-2-major-revision/)
 - [Download the single-file offline edition](https://github.com/Voyager0057/reviewer-2-major-revision/raw/refs/heads/main/Reviewer-2-Major-Revision.html)
 
-Choose a manuscript archetype, read the review, select one of three resolution routes, and play cards whose capabilities match the route's concrete steps. The game includes 264 action cards, 160 reviewer comments, 128 events, 20 manuscript archetypes, 48 relics, and a full 48-day campaign. Use the language button in the upper-right corner to switch to English at any time.
+Configure a submission with five review difficulties, six campaign lengths, Ironman, custom rules, and 20 manuscript archetypes. Read each review, select one of three resolution routes, and play cards whose capabilities match its concrete steps. Interactive events hide their outcomes, unfold over 1–3 dialogue beats, and enter a persistent submission timeline before revealing the result.
+
+The Decision Letter Update includes 528 action cards, 160 reviewer comments, 256 story events, 48 relics, 16 endings, autosave, three manual save slots, and campaigns ranging from a 12-minute Espresso Rebuttal to a 96-day Eternal Revision. Use the language button to switch between English and Simplified Chinese at any time.
 
 </details>
 

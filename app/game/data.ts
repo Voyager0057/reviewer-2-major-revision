@@ -25,6 +25,7 @@ import {
   MEGA_ROLES,
   MEGA_STARTING_DECKS,
 } from "./megaExpansion";
+import { GRAND_CARDS, GRAND_EVENTS } from "./grandExpansion";
 
 export const METRICS: Metric[] = [
   "novelty",
@@ -1195,7 +1196,7 @@ const BASE_EVENTS: EventDef[] = [
 ];
 
 export const ROLES: RoleDef[] = [...BASE_ROLES, ...EXPANSION_ROLES, ...MEGA_ROLES];
-export const CARDS: CardDef[] = [...BASE_CARDS, ...EXPANSION_CARDS, ...MEGA_CARDS].map((card) => ({
+export const CARDS: CardDef[] = [...BASE_CARDS, ...EXPANSION_CARDS, ...MEGA_CARDS, ...GRAND_CARDS].map((card) => ({
   ...card,
   provides: inferCardCapabilities(card),
 }));
@@ -1203,7 +1204,19 @@ export const COMMENTS: CommentDef[] = [...BASE_COMMENTS, ...EXPANSION_COMMENTS, 
   ...comment,
   routes: inferCommentRoutes(comment),
 }));
-export const EVENTS: EventDef[] = [...BASE_EVENTS, ...EXPANSION_EVENTS, ...MEGA_EVENTS];
+export const EVENTS: EventDef[] = [...BASE_EVENTS, ...EXPANSION_EVENTS, ...MEGA_EVENTS, ...GRAND_EVENTS.map((event) => ({
+  ...event,
+  choices: event.choices.map((choice) => ({
+    ...choice,
+    story: event.dialogue.map((beat, index) => index === 1 ? {
+      ...beat,
+      speaker: "你",
+      speakerEn: "You",
+      text: `你把「${choice.label}」写进回复框。光标闪了三次，像是在确认你真的想这么做。`,
+      textEn: `You type “${choice.labelEn ?? choice.label}” into the reply box. The cursor blinks three times, as if confirming your intent.`,
+    } : beat),
+  })) as unknown as EventDef["choices"],
+}))];
 export const RELICS = [...EXPANSION_RELICS, ...MEGA_RELICS];
 export const STARTING_DECKS = { ...EXPANSION_STARTING_DECKS, ...MEGA_STARTING_DECKS };
 
@@ -1215,9 +1228,9 @@ export const COMMENT_BY_ID = Object.fromEntries(
 export const EVENT_BY_ID = Object.fromEntries(EVENTS.map((event) => [event.id, event]));
 export const RELIC_BY_ID = Object.fromEntries(RELICS.map((relic) => [relic.id, relic]));
 
-export function stageForResolved(resolved: number): StageId {
-  if (resolved < 8) return "reviewer1";
-  if (resolved < 24) return "reviewer2";
-  if (resolved < 32) return "editor";
+export function stageForResolved(resolved: number, target = 40): StageId {
+  if (resolved < Math.max(2, Math.round(target * 0.2))) return "reviewer1";
+  if (resolved < Math.max(4, Math.round(target * 0.6))) return "reviewer2";
+  if (resolved < Math.max(6, Math.round(target * 0.8))) return "editor";
   return "camera";
 }

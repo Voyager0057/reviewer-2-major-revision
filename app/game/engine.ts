@@ -14,7 +14,8 @@ import {
   scaleRouteRequirements,
   stageForResolved,
 } from "./data";
-import { eventChoiceText, eventTitle } from "./i18n";
+import { eventChoiceText, eventDescription, eventTitle } from "./i18n";
+import { DEFAULT_RUN_SETUP, resolveCampaignConfig } from "./settings";
 import type {
   Capability,
   CapabilityContribution,
@@ -25,6 +26,7 @@ import type {
   ConditionState,
   Delta,
   EventChoice,
+  EventDef,
   GameAction,
   GameState,
   Locale,
@@ -33,21 +35,20 @@ import type {
   PaperStats,
   ResolutionRoute,
   RewardOffer,
+  RunSetup,
   RunEnding,
   StageId,
+  TimelineEntry,
 } from "./types";
 
 const MAX_STAT = 15;
 const MAX_MENTAL = 24;
 const MAX_GPU = 96;
 const MAX_FUNDING = 60;
-const MAX_DAYS = 52;
+const MAX_DAYS = 140;
 const MAX_FOCUS = 8;
 const MAX_CONDITION = 5;
-const CAMPAIGN_DAYS = 48;
-const CAMPAIGN_TARGET = 40;
 const BASE_HAND_SIZE = 7;
-const STAGE_REWARDS = [8, 24, 32];
 
 const EMPTY_CONDITIONS: ConditionState = {
   caffeine: 0,
@@ -70,12 +71,54 @@ const ENDING_COPY: Record<RunEnding["id"], Omit<RunEnding, "id" | "score">> = {
     copy: "四轮审稿、数十条任务和一套逐渐成形的回复策略，终于把论文送过了终点。",
     copyEn: "Four review phases, dozens of tasks, and a rebuttal strategy that finally came together carry the paper across the line.",
   },
+  best_paper: {
+    stamp: "BEST PAPER",
+    title: "连 Reviewer #2 都投了赞成票",
+    titleEn: "Even Reviewer #2 Votes for Best Paper",
+    copy: "四项质量指标像排版过的表格一样整齐。编辑来信问你能否准备获奖感言。",
+    copyEn: "All four quality metrics align like a well-typeset table. The editor asks whether you can prepare an acceptance speech.",
+  },
   open_science: {
     stamp: "ACCEPT",
     title: "开放科学英雄",
     titleEn: "Open Science Hero",
     copy: "你报告失败实验、公开细节，还真的被接收了。罕见结局。",
     copyEn: "You report the failures, open the details, and still get accepted. A rare ending.",
+  },
+  replication_legend: {
+    stamp: "REPRODUCED",
+    title: "复现界传说",
+    titleEn: "Replication Legend",
+    copy: "陌生实验室第一次运行就复现了结果。有人怀疑这违反了科研常识。",
+    copyEn: "An unfamiliar lab reproduces the result on its first run. Someone suspects this violates academic convention.",
+  },
+  clean_review: {
+    stamp: "CLEAN ACCEPT",
+    title: "零风险通关",
+    titleEn: "A Clean Review Record",
+    copy: "没有藏结果，没有移动阈值，审计记录干净得让研究诚信办公室无事可做。",
+    copyEn: "No hidden results, no moving thresholds, and an audit trail so clean that the integrity office has nothing to do.",
+  },
+  speedrun: {
+    stamp: "FAST TRACK",
+    title: "返修速通纪录",
+    titleEn: "Rebuttal Speedrun Record",
+    copy: "咖啡还没有凉，Decision Letter 已经到了。实验室开始研究你的路线。",
+    copyEn: "The coffee is still warm when the decision letter arrives. The lab begins studying your route.",
+  },
+  last_minute: {
+    stamp: "23:59",
+    title: "截止前六十秒",
+    titleEn: "Sixty Seconds Before the Deadline",
+    copy: "上传进度条在 23:59:41 走完。你第一次觉得服务器时钟很美。",
+    copyEn: "The upload completes at 23:59:41. For the first time, the server clock looks beautiful.",
+  },
+  survivor_accept: {
+    stamp: "ACCEPT / REST",
+    title: "接收，然后请假",
+    titleEn: "Accepted, Then Immediately on Leave",
+    copy: "论文被接收，精神状态只剩一个像素。编辑祝贺你，你把通知设为免打扰。",
+    copyEn: "The paper is accepted with one pixel of Mental Health remaining. The editor congratulates you; you enable Do Not Disturb.",
   },
   coauthor_ending: {
     stamp: "ACCEPT",
@@ -90,6 +133,27 @@ const ENDING_COPY: Record<RunEnding["id"], Omit<RunEnding, "id" | "score">> = {
     titleEn: "The Revision Will Return",
     copy: "你活到了截止日，也说服了大多数人。编辑又给了你四十八天。",
     copyEn: "You survive the deadline and persuade most of the room. The editor gives you forty-eight more days.",
+  },
+  minor_revision: {
+    stamp: "MINOR REVISION",
+    title: "小修——传说中的两个字",
+    titleEn: "Minor Revision—The Legendary Phrase",
+    copy: "只剩两处问题。整个实验室围观这封从未见过的 Decision Letter。",
+    copyEn: "Only two issues remain. The entire lab gathers around a decision letter nobody has seen before.",
+  },
+  revise_resubmit: {
+    stamp: "R&R",
+    title: "再修再投，还有希望",
+    titleEn: "Revise, Resubmit, Retain Hope",
+    copy: "编辑没有关门，只把门移远了八条意见。至少投稿系统还认识你。",
+    copyEn: "The editor does not close the door; they move it eight comments farther away. At least the portal remembers you.",
+  },
+  desk_reject: {
+    stamp: "DESK REJECT",
+    title: "编辑在摘要处停下了",
+    titleEn: "The Editor Stops at the Abstract",
+    copy: "评审流程结束得非常高效。遗憾的是，高效的是拒稿。",
+    copyEn: "The review process ends with remarkable efficiency. Unfortunately, the efficient part is the rejection.",
   },
   rejected: {
     stamp: "REJECT",
@@ -113,6 +177,8 @@ const ENDING_COPY: Record<RunEnding["id"], Omit<RunEnding, "id" | "score">> = {
     copyEn: "Shortcuts accumulate into a maze with no exit. The research-integrity office sends an email.",
   },
 };
+
+export const ENDING_IDS = Object.freeze(Object.keys(ENDING_COPY) as RunEnding["id"][]);
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, Math.round(value)));
@@ -144,6 +210,25 @@ function addLog(state: GameState, text: string, textEn: string, tone: LogEntry["
     logs: [...state.logs, { id: state.nextLogId, text, textEn, tone }].slice(-12),
     nextLogId: state.nextLogId + 1,
     lastMessage: text,
+  };
+}
+
+function addTimeline(
+  state: GameState,
+  entry: Omit<TimelineEntry, "id" | "turn" | "daysRemaining">,
+): GameState {
+  return {
+    ...state,
+    timeline: [
+      ...state.timeline,
+      {
+        id: state.nextTimelineId,
+        turn: state.turn,
+        daysRemaining: state.resources.days,
+        ...entry,
+      },
+    ].slice(-240),
+    nextTimelineId: state.nextTimelineId + 1,
   };
 }
 
@@ -491,7 +576,15 @@ function issueDifficulty(state: GameState, commentId: string, stage: StageId) {
   if (state.resources.risk >= 60 && (comment.primary === "reproducibility" || comment.tags.includes("audit"))) difficulty += 1;
   if (comment.tags.some((tag) => tag === "audit" || tag === "code") || comment.primary === "reproducibility") difficulty += Math.min(2, state.conditions.technicalDebt);
   difficulty -= Math.min(2, state.conditions.reviewerFavor);
+  difficulty += state.campaign.issueModifier;
   return clamp(difficulty, 5, 20);
+}
+
+function campaignMilestones(target: number) {
+  const reviewer1 = Math.max(2, Math.round(target * 0.2));
+  const reviewer2 = Math.max(reviewer1 + 2, Math.round(target * 0.6));
+  const editor = Math.max(reviewer2 + 2, Math.round(target * 0.8));
+  return { reviewer1, reviewer2, editor };
 }
 
 function routeCoverage(state: GameState, route: ResolutionRoute) {
@@ -514,13 +607,15 @@ function bestRouteForDeck(state: GameState, commentId: string) {
 
 function spawnIssue(state: GameState, requestedStage?: StageId): GameState {
   let working = state;
-  let stage = requestedStage ?? stageForResolved(state.resolved);
-  if (state.resolved === 32 && !state.coauthorChecked && !requestedStage) {
+  const milestones = campaignMilestones(state.campaign.baseTarget);
+  let stage = requestedStage ?? stageForResolved(state.resolved, state.campaign.baseTarget);
+  if (state.resolved === milestones.editor && !state.coauthorChecked && !requestedStage) {
     const [roll, rngState] = nextRandom(state.rngState);
     let chance = 0.18 + (state.stats.clarity <= 5 ? 0.12 : 0) + (state.runStats.dangerousPlayed > 0 ? 0.15 : 0);
     chance = Math.min(0.5, chance);
     const hiddenBoss = roll < chance;
-    working = { ...state, rngState, coauthorChecked: true, hiddenBoss, target: hiddenBoss ? CAMPAIGN_TARGET + 4 : state.target };
+    const hiddenExtra = Math.max(2, Math.round(state.campaign.baseTarget * 0.1));
+    working = { ...state, rngState, coauthorChecked: true, hiddenBoss, target: hiddenBoss ? state.campaign.baseTarget + hiddenExtra : state.target };
     if (hiddenBoss) stage = "coauthor";
   }
 
@@ -559,7 +654,15 @@ function spawnIssue(state: GameState, requestedStage?: StageId): GameState {
   next = ensureContextualHand(next);
   const zh = stage === "coauthor" ? "隐藏 Boss 出现：合作者要求重写整篇。" : comment.quoteZh ?? comment.quote;
   const en = stage === "coauthor" ? "Hidden boss: the coauthor requests a complete rewrite." : comment.quote;
-  return addLog(next, zh, en, stage === "coauthor" ? "danger" : "neutral");
+  next = addLog(next, zh, en, stage === "coauthor" ? "danger" : "neutral");
+  return addTimeline(next, {
+    kind: "review",
+    title: stage === "coauthor" ? "隐藏加试：整篇重写" : `收到第 ${state.resolved + 1} 条审稿意见`,
+    titleEn: stage === "coauthor" ? "Hidden examination: rewrite everything" : `Review comment ${state.resolved + 1} arrives`,
+    detail: zh,
+    detailEn: en,
+    tone: stage === "coauthor" ? "danger" : "neutral",
+  });
 }
 
 function createReward(state: GameState, reason: GameState["rewardReason"]): GameState {
@@ -590,26 +693,28 @@ function createReward(state: GameState, reason: GameState["rewardReason"]): Game
   );
 }
 
-export function createGame(roleId: string, seed: number): GameState {
+export function createGame(roleId: string, seed: number, setup: RunSetup = DEFAULT_RUN_SETUP): GameState {
   const role = ROLE_BY_ID[roleId] ?? ROLE_BY_ID.method;
+  const campaign = resolveCampaignConfig(setup);
   const normalizedSeed = (seed >>> 0) || 0x2f6e2b1;
   const starter = (STARTING_DECKS[role.id] ?? STARTING_DECKS.method).filter((cardId) => CARD_BY_ID[cardId]);
   const [deck, rngState] = shuffle(starter, normalizedSeed);
   let state: GameState = {
-    engineVersion: 3,
+    engineVersion: 4,
     phase: "playing",
     seed: normalizedSeed,
     rngState,
     roleId: role.id,
+    campaign,
     turn: 1,
     stats: { ...role.stats },
     resources: {
-      gpu: clamp(role.resources.gpu * 4, 0, MAX_GPU),
-      funding: clamp(role.resources.funding * 4, 0, MAX_FUNDING),
-      mental: clamp(role.resources.mental + 8, 0, MAX_MENTAL),
+      gpu: clamp(role.resources.gpu * 4 * campaign.resourceMultiplier, 0, MAX_GPU),
+      funding: clamp(role.resources.funding * 4 * campaign.resourceMultiplier, 0, MAX_FUNDING),
+      mental: clamp((role.resources.mental + 8) * Math.min(1.12, campaign.resourceMultiplier), 0, MAX_MENTAL),
       risk: 0,
-      days: clamp(CAMPAIGN_DAYS + (role.trait?.extraDays ?? 0), 0, MAX_DAYS),
-      focus: 4,
+      days: clamp(campaign.totalDays + (role.trait?.extraDays ?? 0), 0, MAX_DAYS),
+      focus: campaign.difficultyId === "desk_reject" ? 3 : 4,
     },
     deck,
     discard: [],
@@ -635,7 +740,7 @@ export function createGame(roleId: string, seed: number): GameState {
     seenComments: [],
     seenEvents: [],
     resolved: 0,
-    target: CAMPAIGN_TARGET,
+    target: campaign.baseTarget,
     solvedThisTurn: 0,
     playedThisTurn: [],
     researchedThisTurn: false,
@@ -643,9 +748,22 @@ export function createGame(roleId: string, seed: number): GameState {
     hiddenBoss: false,
     coauthorChecked: false,
     activeEventId: null,
-    runStats: { cardsPlayed: 0, dangerousPlayed: 0, perfectReplies: 0, negativeResults: 0, maxDailySolved: 0, strangestEvent: "" },
+    eventFlow: null,
+    runStats: { cardsPlayed: 0, dangerousPlayed: 0, perfectReplies: 0, negativeResults: 0, maxDailySolved: 0, strangestEvent: "", eventsCompleted: 0 },
     logs: [],
     nextLogId: 1,
+    timeline: [{
+      id: 1,
+      turn: 1,
+      daysRemaining: clamp(campaign.totalDays + (role.trait?.extraDays ?? 0), 0, MAX_DAYS),
+      kind: "submission",
+      title: `《${role.name}》正式投稿`,
+      titleEn: `${role.en} formally submitted`,
+      detail: `编辑部确认收稿。你获得了 ${campaign.totalDays} 天，以及一种暂时没有邮件的宁静。`,
+      detailEn: `The editorial office confirms receipt. You receive ${campaign.totalDays} days and a brief, email-free silence.`,
+      tone: "good",
+    }],
+    nextTimelineId: 2,
     lastMessage: "投稿已送达。Reviewer #1 正在输入……",
     ending: null,
   };
@@ -657,16 +775,25 @@ export function createGame(roleId: string, seed: number): GameState {
 export function calculateScore(state: GameState) {
   const quality = METRICS.reduce((sum, metric) => sum + state.stats[metric], 0);
   const upgrades = Object.values(state.cardLevels).filter((level) => level > 0).length;
-  return Math.max(0, Math.round(
+  const raw = Math.max(0, Math.round(
     state.resolved * 240 + quality * 45 + state.resources.mental * 18 + state.resources.gpu * 3 +
     state.resources.funding * 6 + state.resources.days * 20 + state.runStats.perfectReplies * 60 +
     state.relics.length * 45 + upgrades * 35 - state.resources.risk * 9 - state.runStats.dangerousPlayed * 40,
   ));
+  return Math.round(raw * (state.campaign?.scoreMultiplier ?? 1));
 }
 
 function finish(state: GameState, id: RunEnding["id"]): GameState {
   const copy = ENDING_COPY[id];
-  return { ...state, phase: "ended", activeEventId: null, rewardOffers: [], rewardReason: null, ending: { id, ...copy, score: calculateScore(state) }, lastMessage: copy.title };
+  const scored = { ...state, phase: "ended" as const, activeEventId: null, eventFlow: null, rewardOffers: [], rewardReason: null, ending: { id, ...copy, score: calculateScore(state) }, lastMessage: copy.title };
+  return addTimeline(scored, {
+    kind: "decision",
+    title: copy.title,
+    titleEn: copy.titleEn ?? copy.title,
+    detail: copy.copy,
+    detailEn: copy.copyEn ?? copy.copy,
+    tone: ["retracted", "burnout", "rejected", "desk_reject"].includes(id) ? "danger" : ["major_revision", "revise_resubmit"].includes(id) ? "neutral" : "good",
+  });
 }
 
 function resolveHardFailure(state: GameState): GameState | null {
@@ -676,7 +803,14 @@ function resolveHardFailure(state: GameState): GameState | null {
 }
 
 function finishAccepted(state: GameState): GameState {
+  const floor = Math.min(...METRICS.map((metric) => state.stats[metric]));
+  if (floor >= 12 && state.resources.risk <= 15 && state.runStats.perfectReplies >= Math.ceil(state.target * 0.2)) return finish(state, "best_paper");
   if (state.resources.risk <= 5 && state.stats.reproducibility >= 10 && state.runStats.negativeResults > 0) return finish(state, "open_science");
+  if (state.stats.reproducibility >= 15 && state.stats.evidence >= 12 && state.runStats.dangerousPlayed === 0) return finish(state, "replication_legend");
+  if (state.resources.risk === 0 && state.runStats.dangerousPlayed === 0) return finish(state, "clean_review");
+  if (state.campaign.lengthId === "espresso" && state.resources.days >= Math.max(2, Math.floor(state.campaign.totalDays * 0.18))) return finish(state, "speedrun");
+  if (state.resources.days <= 1) return finish(state, "last_minute");
+  if (state.resources.mental <= 3) return finish(state, "survivor_accept");
   if (state.hiddenBoss) return finish(state, "coauthor_ending");
   return finish(state, "accepted");
 }
@@ -684,7 +818,10 @@ function finishAccepted(state: GameState): GameState {
 function deadlineDecision(state: GameState): GameState {
   const quality = METRICS.reduce((sum, metric) => sum + state.stats[metric], 0);
   const floor = Math.min(...METRICS.map((metric) => state.stats[metric]));
+  if (state.resolved >= state.target - 2 && quality >= 32 && floor >= 5) return finish(state, "minor_revision");
   if (state.resolved >= state.target - 4 && quality >= 24 && floor >= 3) return finish(state, "major_revision");
+  if (state.resolved >= state.target - 8 && quality >= 20 && floor >= 2) return finish(state, "revise_resubmit");
+  if (state.resolved < Math.ceil(state.target * 0.25) || state.stats.novelty <= 1) return finish(state, "desk_reject");
   return finish(state, "rejected");
 }
 
@@ -766,8 +903,17 @@ function resolveIssue(state: GameState, overshoot: number): GameState {
     exact ? `Route complete: ${route?.nameEn ?? "review comment"}. A precise reply refunds 1 Focus.` : `Resolved reviewer comment ${resolved}.`,
     "good",
   );
+  next = addTimeline(next, {
+    kind: "revision",
+    title: `第 ${resolved} 条意见已回复`,
+    titleEn: `Comment ${resolved} resolved`,
+    detail: `采用「${route?.name ?? "当前路线"}」完成回应${exact ? "，编辑系统标记为精准回复" : ""}。`,
+    detailEn: `Completed via ${route?.nameEn ?? "the selected route"}${exact ? "; the portal marks it as a precise response" : ""}.`,
+    tone: "good",
+  });
   if (resolved >= next.target) return finishAccepted(next);
-  if (STAGE_REWARDS.includes(resolved)) return createReward(next, "stage_clear");
+  const milestones = campaignMilestones(next.campaign.baseTarget);
+  if ([milestones.reviewer1, milestones.reviewer2, milestones.editor].includes(resolved)) return createReward(next, "stage_clear");
   if (resolved % 4 === 0) return createReward(next, "peer_review");
   return spawnIssue(next);
 }
@@ -885,15 +1031,25 @@ function chooseEvent(state: GameState): GameState {
   const pool = unseen.length > 0 ? unseen : EVENTS;
   const [roll, rngState] = nextRandom(state.rngState);
   const event = pool[Math.floor(roll * pool.length)] ?? EVENTS[0];
-  return {
+  let next: GameState = {
     ...state,
     phase: "event",
     rngState,
     activeEventId: event.id,
+    eventFlow: { eventId: event.id, choiceId: null, beatIndex: 0, status: "choice" },
     seenEvents: [...state.seenEvents, event.id],
     runStats: { ...state.runStats, strangestEvent: event.id },
     lastMessage: `突发事件：${event.title}`,
   };
+  next = addTimeline(next, {
+    kind: "event",
+    title: `突发事件：${event.title}`,
+    titleEn: `Breaking event: ${eventTitle(event, "en")}`,
+    detail: event.description,
+    detailEn: eventDescription(event, "en"),
+    tone: "neutral",
+  });
+  return next;
 }
 
 function applyDailyRelics(state: GameState) {
@@ -938,7 +1094,7 @@ function ageConditions(conditions: ConditionState): ConditionState {
 function endTurn(state: GameState): GameState {
   if (state.phase !== "playing" || state.ending) return state;
   const comment = getCurrentComment(state);
-  const rawPenalty = 1 + state.issue.escalations + (comment.severity === 3 ? 1 : 0);
+  const rawPenalty = Math.max(0, 1 + state.campaign.pressureModifier + state.issue.escalations + (comment.severity === 3 ? 1 : 0));
   const statDefense = Math.floor(state.stats[comment.primary] / 7);
   const requirements = getIssueRequirements(state);
   const madeRelevantProgress = state.playedThisTurn.some((cardId) => {
@@ -978,12 +1134,12 @@ function endTurn(state: GameState): GameState {
   const failed = resolveHardFailure(next);
   if (failed) return failed;
   if (next.resources.days <= 0) return deadlineDecision(next);
-  if (next.turn >= 3 && next.turn % 2 === 1) return chooseEvent(next);
+  if (next.turn >= 2 && (next.turn - 1) % next.campaign.eventEvery === 0) return chooseEvent(next);
   return prepareNextDay(next);
 }
 
 export function canChooseEvent(state: GameState, choice: EventChoice) {
-  if (state.phase !== "event") return false;
+  if (state.phase !== "event" || state.eventFlow?.status !== "choice") return false;
   if ((choice.delta.gpu ?? 0) < 0 && state.resources.gpu < -(choice.delta.gpu ?? 0)) return false;
   if ((choice.delta.funding ?? 0) < 0 && state.resources.funding < -(choice.delta.funding ?? 0)) return false;
   if ((choice.delta.focus ?? 0) < 0 && state.resources.focus < -(choice.delta.focus ?? 0)) return false;
@@ -1026,19 +1182,83 @@ function applyEventEffect(state: GameState, choice: EventChoice) {
   return next;
 }
 
-function resolveEvent(state: GameState, eventId: string, choiceId: string): GameState {
-  if (state.phase !== "event" || state.activeEventId !== eventId || state.ending) return state;
+export function getEventDialogue(choice: EventChoice, event?: EventDef) {
+  if (choice.story && choice.story.length > 0) return choice.story.slice(0, 3);
+  const labelEn = event ? eventChoiceText(event, choice, "label", "en") : choice.labelEn ?? choice.label;
+  return [{
+    speaker: "你",
+    speakerEn: "You",
+    text: `“${choice.label}。”你按下发送。对话框里出现三个点，停了很久，又消失了。`,
+    textEn: `“${labelEn}.” You press Send. Three dots appear, linger, and disappear.`,
+    aside: "选择已经作出，收益与代价将在故事结束后揭晓。",
+    asideEn: "The choice is locked. Its costs and rewards will be revealed after the scene.",
+  }];
+}
+
+function selectEventChoice(state: GameState, eventId: string, choiceId: string): GameState {
+  if (state.phase !== "event" || state.activeEventId !== eventId || state.ending || state.eventFlow?.status !== "choice") return state;
   const event = EVENT_BY_ID[eventId];
   const choice = event?.choices.find((item) => item.id === choiceId);
   if (!event || !choice || !canChooseEvent(state, choice)) return state;
+  const before = {
+    stats: { ...state.stats },
+    resources: { ...state.resources },
+    conditions: { ...state.conditions },
+    masterDeck: [...state.masterDeck],
+    cardLevels: { ...state.cardLevels },
+    relics: [...state.relics],
+  };
+  return addLog(
+    { ...state, eventFlow: { eventId, choiceId, beatIndex: 0, status: "dialogue", before } },
+    `${event.title}：你选择了「${choice.label}」，结果尚未揭晓。`,
+    `${eventTitle(event, "en")}: you choose “${eventChoiceText(event, choice, "label", "en")}.” Outcome pending.`,
+    "neutral",
+  );
+}
+
+function advanceEvent(state: GameState): GameState {
+  const flow = state.eventFlow;
+  if (state.phase !== "event" || !flow || flow.status !== "dialogue" || !flow.choiceId || state.ending) return state;
+  const event = EVENT_BY_ID[flow.eventId];
+  const choice = event?.choices.find((item) => item.id === flow.choiceId);
+  if (!event || !choice) return state;
+  const dialogue = getEventDialogue(choice, event);
+  if (flow.beatIndex < dialogue.length - 1) {
+    return { ...state, eventFlow: { ...flow, beatIndex: flow.beatIndex + 1 } };
+  }
   let delta = choice.delta;
   const shield = state.relics.reduce((sum, relicId) => sum + (RELIC_BY_ID[relicId]?.effect?.eventShield ?? 0), 0);
   if (state.relics.includes("backup-drive") && (delta.stats?.reproducibility ?? 0) < 0) {
     delta = { ...delta, stats: { ...delta.stats, reproducibility: Math.min(0, (delta.stats?.reproducibility ?? 0) + 2) } };
   }
-  if ((delta.mental ?? 0) < 0 && shield > 0) delta = { ...delta, mental: Math.min(0, (delta.mental ?? 0) + shield) };
+  if (shield > 0) {
+    const protectedResources = ["gpu", "funding", "mental", "days", "focus"] as const;
+    const protectedDelta = { ...delta };
+    protectedResources.forEach((key) => {
+      if ((protectedDelta[key] ?? 0) < 0) protectedDelta[key] = Math.min(0, (protectedDelta[key] ?? 0) + shield);
+    });
+    delta = protectedDelta;
+  }
   let next = applyEventEffect(applyDelta(state, delta), choice);
   next = addLog(next, `${event.title}：${choice.result}`, `${eventTitle(event, "en")}: ${eventChoiceText(event, choice, "result", "en")}`, "neutral");
+  next = {
+    ...next,
+    eventFlow: { ...flow, beatIndex: dialogue.length - 1, status: "reveal" },
+    runStats: { ...next.runStats, eventsCompleted: next.runStats.eventsCompleted + 1 },
+  };
+  return addTimeline(next, {
+    kind: "event",
+    title: `${event.title} · 结案`,
+    titleEn: `${eventTitle(event, "en")} · resolved`,
+    detail: choice.result,
+    detailEn: eventChoiceText(event, choice, "result", "en"),
+    tone: (choice.delta.risk ?? 0) >= 10 || (choice.delta.mental ?? 0) <= -4 ? "danger" : (choice.delta.risk ?? 0) < 0 || (choice.delta.mental ?? 0) > 0 ? "good" : "neutral",
+  });
+}
+
+function completeEvent(state: GameState): GameState {
+  if (state.phase !== "event" || state.eventFlow?.status !== "reveal" || state.ending) return state;
+  const next: GameState = { ...state, activeEventId: null, eventFlow: null };
   const failed = resolveHardFailure(next);
   if (failed) return failed;
   if (next.resources.days <= 0) return deadlineDecision(next);
@@ -1069,6 +1289,20 @@ function chooseReward(state: GameState, offerId: string): GameState {
     next = { ...next, cardLevels: { ...next.cardLevels, [card.id]: 1 } };
     next = addLog(next, `卡牌升级：${card.name}。`, `Card upgraded: ${card.en}.`, "good");
   }
+  const label = offer.kind === "relic"
+    ? RELIC_BY_ID[offer.contentId]?.name
+    : CARD_BY_ID[offer.contentId]?.name;
+  const labelEn = offer.kind === "relic"
+    ? RELIC_BY_ID[offer.contentId]?.en
+    : CARD_BY_ID[offer.contentId]?.en;
+  next = addTimeline(next, {
+    kind: "revision",
+    title: offer.kind === "upgrade" ? `升级行动：${label ?? offer.contentId}` : `研究资产入组：${label ?? offer.contentId}`,
+    titleEn: offer.kind === "upgrade" ? `Action upgraded: ${labelEn ?? offer.contentId}` : `Research asset acquired: ${labelEn ?? offer.contentId}`,
+    detail: reason === "stage_clear" ? "阶段复盘完成，这项选择将影响后续评审。" : "牌组构筑记录已写入修稿档案。",
+    detailEn: reason === "stage_clear" ? "Stage review complete; this choice will shape later rounds." : "The deckbuilding choice enters the revision archive.",
+    tone: "good",
+  });
   return finishReward(next, reason);
 }
 
@@ -1081,7 +1315,14 @@ function skipReward(state: GameState): GameState {
     "You skip the reward and restore 2 Mental Health.",
     "neutral",
   );
-  return finishReward(next, reason);
+  return finishReward(addTimeline(next, {
+    kind: "revision",
+    title: "跳过新方向，保住精神状态",
+    titleEn: "Skipped a new direction to preserve Mental Health",
+    detail: "你礼貌地拒绝再开一条支线。待办列表第一次变短。",
+    detailEn: "You politely decline another research branch. The task list gets shorter for once.",
+    tone: "neutral",
+  }), reason);
 }
 
 function chooseRoute(state: GameState, routeId: ResolutionRoute["id"]): GameState {
@@ -1133,7 +1374,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case "PLAY_CARD": return playCard(state, action.instanceId);
     case "END_TURN": return action.expectedTurn === state.turn ? endTurn(state) : state;
-    case "CHOOSE_EVENT": return resolveEvent(state, action.eventId, action.choiceId);
+    case "CHOOSE_EVENT": return selectEventChoice(state, action.eventId, action.choiceId);
+    case "ADVANCE_EVENT": return advanceEvent(state);
+    case "COMPLETE_EVENT": return completeEvent(state);
     case "CHOOSE_REWARD": return chooseReward(state, action.offerId);
     case "SKIP_REWARD": return skipReward(state);
     case "CHOOSE_ROUTE": return chooseRoute(state, action.routeId);
@@ -1166,6 +1409,8 @@ export function getActiveEvent(state: GameState) {
   return state.activeEventId ? EVENT_BY_ID[state.activeEventId] : null;
 }
 
-export function getCampaignConfig() {
-  return { days: CAMPAIGN_DAYS, target: CAMPAIGN_TARGET, handSize: BASE_HAND_SIZE };
+export function getCampaignConfig(setup?: RunSetup) {
+  if (!setup) return { days: 48, target: 40, handSize: BASE_HAND_SIZE };
+  const campaign = resolveCampaignConfig(setup);
+  return { days: campaign.totalDays, target: campaign.baseTarget, handSize: BASE_HAND_SIZE, ...campaign };
 }

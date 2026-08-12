@@ -36,7 +36,7 @@ git push -u origin main
 
 1. 先运行 `pnpm run test:offline`，生成并验证最新单文件。
 2. 在 GitHub 仓库右侧选择 **Releases → Draft a new release**。
-3. 创建版本标签，例如 `v1.0.0`。
+3. 创建版本标签，例如本次大版本可使用 `v4.0.0`。
 4. 把根目录的 `Reviewer-2-Major-Revision.html` 拖入附件区。
 5. 点击 **Publish release**。
 
@@ -53,6 +53,28 @@ pnpm exec tsc --noEmit
 
 只要这些检查通过，GitHub Pages 与离线 HTML 使用的就是同一套游戏代码和内容。
 
+## 发布 The Decision Letter Update
+
+本次版本已经同时更新源码、玩家 README、GitHub Pages 构建入口和单文件离线版。检查通过后，你只需要：
+
+```bash
+git add app tests package.json README.md PUBLISHING.md Reviewer-2-Major-Revision.html
+git commit -m "Release The Decision Letter Update"
+git pull --rebase origin main
+git push origin main
+```
+
+如果 `git pull --rebase` 提示冲突，先不要强制推送；解决冲突、重新执行检查并提交后再推送。`main` 推送成功后，GitHub Actions 会自动生成并发布在线版。
+
+本次内容标识应为：
+
+- v4.0 · The Decision Letter Update
+- 528 张行动卡
+- 256 个互动故事事件
+- 16 种结局
+- 5 档难度与 6 种战役周期
+- 自动存档与 3 个手动存档槽
+
 ## 常见问题
 
 ### 双击后出现空白页
@@ -61,7 +83,7 @@ pnpm exec tsc --noEmit
 
 ### 存档在哪里
 
-存档和最高分使用浏览器本机存储，不会上传。清理浏览器网站数据、换浏览器，或某些浏览器将不同本地路径视为不同来源时，存档可能不会跟随。
+自动存档、三个手动槽和最高分都使用浏览器本机存储，不会上传。清理浏览器网站数据、换浏览器，或某些浏览器将不同本地路径视为不同来源时，存档可能不会跟随。铁人模式仍有防崩溃自动存档，但不允许写入手动槽。
 
 ### GitHub Pages 显示 404
 

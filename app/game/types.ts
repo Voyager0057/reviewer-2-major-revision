@@ -50,12 +50,55 @@ export type CardCategory =
 
 export type EndingId =
   | "accepted"
+  | "best_paper"
   | "open_science"
+  | "replication_legend"
+  | "clean_review"
+  | "speedrun"
+  | "last_minute"
+  | "survivor_accept"
   | "coauthor_ending"
+  | "minor_revision"
   | "major_revision"
+  | "revise_resubmit"
+  | "desk_reject"
   | "rejected"
   | "burnout"
   | "retracted";
+
+export type DifficultyId =
+  | "friendly"
+  | "constructive"
+  | "major"
+  | "reviewer_two"
+  | "desk_reject";
+
+export type CampaignLengthId =
+  | "espresso"
+  | "conference"
+  | "standard"
+  | "marathon"
+  | "eternal"
+  | "custom";
+
+export interface RunSetup {
+  difficultyId: DifficultyId;
+  lengthId: CampaignLengthId;
+  ironman: boolean;
+  customDays?: number;
+  customTarget?: number;
+  customEventEvery?: number;
+}
+
+export interface CampaignConfig extends RunSetup {
+  totalDays: number;
+  baseTarget: number;
+  eventEvery: number;
+  issueModifier: number;
+  pressureModifier: number;
+  resourceMultiplier: number;
+  scoreMultiplier: number;
+}
 
 export interface PaperStats {
   novelty: number;
@@ -196,6 +239,16 @@ export interface EventChoice {
   resultEn?: string;
   delta: Delta;
   effect?: EventEffect;
+  story?: EventDialogueBeat[];
+}
+
+export interface EventDialogueBeat {
+  speaker: string;
+  speakerEn?: string;
+  text: string;
+  textEn?: string;
+  aside?: string;
+  asideEn?: string;
 }
 
 export interface EventDef {
@@ -271,6 +324,7 @@ export interface RunStats {
   negativeResults: number;
   maxDailySolved: number;
   strangestEvent: string;
+  eventsCompleted: number;
 }
 
 export interface LogEntry {
@@ -280,12 +334,44 @@ export interface LogEntry {
   textEn?: string;
 }
 
+export type TimelineKind = "submission" | "review" | "revision" | "event" | "decision" | "save";
+
+export interface TimelineEntry {
+  id: number;
+  turn: number;
+  daysRemaining: number;
+  kind: TimelineKind;
+  title: string;
+  titleEn?: string;
+  detail: string;
+  detailEn?: string;
+  tone: "good" | "bad" | "neutral" | "danger";
+}
+
+export interface EventFlowState {
+  eventId: string;
+  choiceId: string | null;
+  beatIndex: number;
+  status: "choice" | "dialogue" | "reveal";
+  before?: EventOutcomeSnapshot;
+}
+
+export interface EventOutcomeSnapshot {
+  stats: PaperStats;
+  resources: RunResources;
+  conditions: ConditionState;
+  masterDeck: string[];
+  cardLevels: Record<string, number>;
+  relics: string[];
+}
+
 export interface GameState {
-  engineVersion: 3;
+  engineVersion: 4;
   phase: "playing" | "event" | "reward" | "ended";
   seed: number;
   rngState: number;
   roleId: string;
+  campaign: CampaignConfig;
   turn: number;
   stats: PaperStats;
   resources: RunResources;
@@ -312,9 +398,12 @@ export interface GameState {
   hiddenBoss: boolean;
   coauthorChecked: boolean;
   activeEventId: string | null;
+  eventFlow: EventFlowState | null;
   runStats: RunStats;
   logs: LogEntry[];
   nextLogId: number;
+  timeline: TimelineEntry[];
+  nextTimelineId: number;
   lastMessage: string;
   ending: RunEnding | null;
 }
@@ -323,6 +412,8 @@ export type GameAction =
   | { type: "PLAY_CARD"; instanceId: number }
   | { type: "END_TURN"; expectedTurn: number }
   | { type: "CHOOSE_EVENT"; eventId: string; choiceId: string }
+  | { type: "ADVANCE_EVENT" }
+  | { type: "COMPLETE_EVENT" }
   | { type: "CHOOSE_REWARD"; offerId: string }
   | { type: "SKIP_REWARD" }
   | { type: "CHOOSE_ROUTE"; routeId: ResolutionRoute["id"] }
