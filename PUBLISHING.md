@@ -53,13 +53,13 @@ pnpm exec tsc --noEmit
 
 只要这些检查通过，GitHub Pages 与离线 HTML 使用的就是同一套游戏代码和内容。
 
-## 发布 The Decision Letter Update
+## 发布 Multilingual Update
 
-本次版本已经同时更新源码、玩家 README、GitHub Pages 构建入口和单文件离线版。检查通过后，你只需要：
+本次版本已经同时更新源码、英文优先的玩家 README、GitHub Pages 构建入口和单文件离线版。检查通过后，你只需要：
 
 ```bash
-git add app tests package.json README.md PUBLISHING.md Reviewer-2-Major-Revision.html
-git commit -m "Release The Decision Letter Update"
+git add app offline tests package.json README.md PUBLISHING.md Reviewer-2-Major-Revision.html
+git commit -m "Make English default and add multilingual UI"
 git pull --rebase origin main
 git push origin main
 ```
@@ -74,6 +74,7 @@ git push origin main
 - 16 种结局
 - 5 档难度与 6 种战役周期
 - 自动存档与 3 个手动存档槽
+- 英语默认界面，可切换简体中文、日语、韩语和西班牙语
 
 ## 常见问题
 

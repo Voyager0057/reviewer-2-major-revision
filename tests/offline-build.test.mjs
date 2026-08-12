@@ -12,8 +12,13 @@ test("offline release is one self-contained playable HTML file", async () => {
 
   assert.match(html, /Reviewer #2: Major Revision/);
   assert.match(html, /ACADEMIC SURVIVAL DECKBUILDER/);
-  assert.match(html, /528 张卡/);
-  assert.match(html, /256 个事件/);
+  assert.match(html, /528 cards/);
+  assert.match(html, /256 events/);
+  assert.match(html, /English/);
+  assert.match(html, /简体中文/);
+  assert.match(html, /日本語/);
+  assert.match(html, /한국어/);
+  assert.match(html, /Español/);
   assert.ok(inlineStyle?.[1].length > 1_000, "expected embedded game styles");
   assert.ok(inlineScript?.[1].length > 400_000, "expected embedded game code and content");
   assert.equal(

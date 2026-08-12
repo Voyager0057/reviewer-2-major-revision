@@ -18,20 +18,20 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: new URL(origin),
     title: "Reviewer #2: Major Revision",
     description:
-      "中英双语学术生存卡牌 Roguelike：528 张卡、256 个故事、160 条能力关联意见、5 档难度与 16 个结局。",
+      "A multilingual academic-survival deckbuilding roguelike with 528 cards, 256 interactive stories, capability-linked reviews, five difficulties, and 16 endings.",
     applicationName: "Reviewer #2: Major Revision",
     openGraph: {
       title: "Reviewer #2: Major Revision",
-      description: "配置论文、难度与返修周期；在 256 个隐藏后果互动故事中对抗 Reviewer #2，并寻找 16 种结局。",
+      description: "Configure a manuscript and revision campaign, survive 256 hidden-outcome academic stories, and discover 16 decision-letter endings.",
       type: "website",
-      locale: "zh_CN",
-      alternateLocale: ["en_US"],
+      locale: "en_US",
+      alternateLocale: ["zh_CN", "ja_JP", "ko_KR", "es_ES"],
       images: [{ url: socialImage, width: 1200, height: 630, alt: "Reviewer #2: Major Revision" }],
     },
     twitter: {
       card: "summary_large_image",
       title: "Reviewer #2: Major Revision",
-      description: "A bilingual academic-survival deckbuilder with 528 cards, 256 interactive stories, configurable campaigns, local save slots, and 16 endings.",
+      description: "A multilingual academic-survival deckbuilder with 528 cards, 256 interactive stories, configurable campaigns, local save slots, and 16 endings.",
       images: [socialImage],
     },
   };
@@ -44,7 +44,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="zh-CN">
+    <html lang="en">
       <body>{children}</body>
     </html>
   );

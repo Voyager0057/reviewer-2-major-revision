@@ -1385,15 +1385,14 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
   }
 }
 
-export function cardDeltaSummary(card: CardDef, locale: Locale = "zh") {
+export function cardDeltaSummary(card: CardDef, locale: Locale = "en") {
   const parts: string[] = [];
-  const labels: Record<Locale, Record<Metric, string>> = {
-    zh: { novelty: "创新", evidence: "证据", clarity: "清晰", reproducibility: "复现" },
-    en: { novelty: "Novelty", evidence: "Evidence", clarity: "Clarity", reproducibility: "Repro" },
-  };
+  const labels: Record<Metric, string> = locale === "zh"
+    ? { novelty: "创新", evidence: "证据", clarity: "清晰", reproducibility: "复现" }
+    : { novelty: "Novelty", evidence: "Evidence", clarity: "Clarity", reproducibility: "Repro" };
   for (const metric of METRICS) {
     const value = card.delta?.stats?.[metric];
-    if (value) parts.push(`${labels[locale][metric]} ${value > 0 ? "+" : ""}${value}`);
+    if (value) parts.push(`${labels[metric]} ${value > 0 ? "+" : ""}${value}`);
   }
   const resourceLabels = locale === "zh"
     ? { mental: "精神", risk: "风险", gpu: "GPU", days: "天数", funding: "经费", focus: "专注" }

@@ -2,13 +2,26 @@
 
 import { useMemo } from "react";
 import { METRICS, METRIC_META, ROLE_BY_ID, ROLES } from "./data";
-import { roleText } from "./i18n";
+import { LANGUAGE_OPTIONS, localizedText, roleText } from "./i18n";
 import { CAMPAIGN_LENGTHS, DIFFICULTIES, campaignLengthFor, difficultyFor, resolveCampaignConfig } from "./settings";
 import type { ManualSaveMetadata, ManualSaveSlot } from "./storage";
 import type { GameState, Locale, RunSetup } from "./types";
 
 function t(locale: Locale, zh: string, en: string) {
-  return locale === "zh" ? zh : en;
+  return localizedText(locale, zh, en);
+}
+
+export function LanguageSelector({ locale, onChange, compact = false }: { locale: Locale; onChange: (locale: Locale) => void; compact?: boolean }) {
+  return (
+    <select
+      className={`language-select ${compact ? "compact-language" : ""}`}
+      value={locale}
+      onChange={(event) => onChange(event.target.value as Locale)}
+      aria-label="Language"
+    >
+      {LANGUAGE_OPTIONS.map((option) => <option value={option.id} lang={option.lang} key={option.id}>{compact ? option.short : option.label}</option>)}
+    </select>
+  );
 }
 
 export function NewGameSetup({
@@ -22,7 +35,7 @@ export function NewGameSetup({
   onStart,
   onBack,
   onHelp,
-  onToggleLocale,
+  onLocaleChange,
 }: {
   locale: Locale;
   setup: RunSetup;
@@ -34,7 +47,7 @@ export function NewGameSetup({
   onStart: () => void;
   onBack: () => void;
   onHelp: () => void;
-  onToggleLocale: () => void;
+  onLocaleChange: (locale: Locale) => void;
 }) {
   const role = ROLE_BY_ID[selectedRole] ?? ROLES[0];
   const difficulty = DIFFICULTIES.find((item) => item.id === setup.difficultyId) ?? DIFFICULTIES[2];
@@ -51,9 +64,7 @@ export function NewGameSetup({
           <span><strong>{t(locale, "新投稿配置", "New Submission")}</strong><small>MANUSCRIPT SETUP FORM</small></span>
         </button>
         <div className="header-actions">
-          <button type="button" className="language-toggle" onClick={onToggleLocale} aria-label={locale === "zh" ? "Switch to English" : "切换到中文"}>
-            {locale === "zh" ? "EN" : "中"}
-          </button>
+          <LanguageSelector locale={locale} onChange={onLocaleChange} />
           <button type="button" className="text-button" onClick={onHelp}>? {t(locale, "玩法帮助", "Help")}</button>
           <button type="button" className="text-button" onClick={onBack}>← {t(locale, "返回主菜单", "Main menu")}</button>
         </div>
@@ -81,7 +92,7 @@ export function NewGameSetup({
             <label className="academic-field">
               <span>{t(locale, "选择稿件", "Select manuscript")}</span>
               <select value={role.id} onChange={(event) => onRole(event.target.value)}>
-                {ROLES.map((item) => <option value={item.id} key={item.id}>{locale === "zh" ? `${item.name} · ${item.en}` : `${item.en} · ${item.name}`}</option>)}
+                {ROLES.map((item) => <option value={item.id} key={item.id}>{locale === "zh" ? `${item.name} · ${item.en}` : item.en}</option>)}
               </select>
             </label>
             <article className="selected-paper-card">
@@ -199,7 +210,7 @@ export function SaveManagerModal({
                   <strong>{locale === "zh" ? ROLE_BY_ID[save.roleId]?.name : ROLE_BY_ID[save.roleId]?.en}</strong>
                   <p>{save.resolved}/{save.target} {t(locale, "条意见", "comments")} · {save.daysRemaining} {t(locale, "天剩余", "days left")}</p>
                   <small>{save.ironman ? "◆ IRONMAN · " : ""}{save.lengthId === "custom" ? t(locale, "自定义周期", "Custom campaign") : locale === "zh" ? savedLength?.name : savedLength?.nameEn} · {locale === "zh" ? savedDifficulty?.name : savedDifficulty?.nameEn}</small>
-                  <small>{new Date(save.savedAt).toLocaleString(locale === "zh" ? "zh-CN" : "en-US")} · Seed {save.seed}</small>
+                  <small>{new Date(save.savedAt).toLocaleString(LANGUAGE_OPTIONS.find((option) => option.id === locale)?.lang ?? "en")} · Seed {save.seed}</small>
                 </> : <><strong>{t(locale, "尚无稿件", "No manuscript filed")}</strong><p>{t(locale, "这里安静得不像投稿系统。", "Suspiciously quiet for a submission portal.")}</p></>}
                 <div className="save-slot-actions">
                   {mode === "save" && <button type="button" disabled={!game || game.campaign.ironman} onClick={() => onSave(slot)}>{save ? t(locale, "覆盖存档", "Overwrite") : t(locale, "保存到此处", "Save here")}</button>}

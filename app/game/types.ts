@@ -4,7 +4,7 @@ export type Metric =
   | "clarity"
   | "reproducibility";
 
-export type Locale = "zh" | "en";
+export type Locale = "en" | "zh" | "ja" | "ko" | "es";
 
 export type CardRarity = "common" | "uncommon" | "rare";
 

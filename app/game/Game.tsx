@@ -28,6 +28,10 @@ import {
   getIssueRequirements,
 } from "./engine";
 import {
+  DEFAULT_LOCALE,
+  documentLanguage,
+  isLocale,
+  localizedText,
   UI_COPY,
   cardRules,
   commentNote,
@@ -50,7 +54,7 @@ import {
 } from "./storage";
 import type { BestRun, ManualSaveMetadata, ManualSaveSlot } from "./storage";
 import type { EventChoice, GameAction, GameState, Locale, Metric, RunSetup } from "./types";
-import { NewGameSetup, PauseModal, SaveManagerModal, TimelineDrawer } from "./GameMenus";
+import { LanguageSelector, NewGameSetup, PauseModal, SaveManagerModal, TimelineDrawer } from "./GameMenus";
 
 type MenuScreen = "menu" | "setup";
 type SoundKind = "paper" | "success" | "error" | "stamp";
@@ -207,7 +211,7 @@ function upgradeDescription(card: (typeof CARD_BY_ID)[string], locale: Locale) {
       questionable: "Upgrade: Risk -5 and Response +2",
     },
   } as const;
-  return descriptions[locale][card.category];
+  return descriptions[locale === "zh" ? "zh" : "en"][card.category];
 }
 
 function reportText(game: GameState, locale: Locale) {
@@ -310,7 +314,7 @@ function drawShareCard(game: GameState, canvas: HTMLCanvasElement, locale: Local
 }
 
 export default function Game() {
-  const [locale, setLocale] = useState<Locale>("zh");
+  const [locale, setLocale] = useState<Locale>(DEFAULT_LOCALE);
   const [screen, setScreen] = useState<MenuScreen>("menu");
   const [selectedRole, setSelectedRole] = useState("method");
   const [runSetup, setRunSetup] = useState<RunSetup>(DEFAULT_RUN_SETUP);
@@ -347,7 +351,7 @@ export default function Game() {
         const stored = window.localStorage.getItem(SOUND_KEY);
         if (stored === "off") setSoundOn(false);
         const storedLocale = window.localStorage.getItem(LOCALE_KEY);
-        if (storedLocale === "en" || storedLocale === "zh") setLocale(storedLocale);
+        if (isLocale(storedLocale)) setLocale(storedLocale);
       } catch {
         // Preferences are optional.
       }
@@ -356,7 +360,7 @@ export default function Game() {
   }, []);
 
   useEffect(() => {
-    document.documentElement.lang = locale === "zh" ? "zh-CN" : "en";
+    document.documentElement.lang = documentLanguage(locale);
   }, [locale]);
 
   useEffect(() => {
@@ -419,8 +423,7 @@ export default function Game() {
     }
   };
 
-  const toggleLocale = () => {
-    const next: Locale = locale === "zh" ? "en" : "zh";
+  const changeLocale = (next: Locale) => {
     setLocale(next);
     try {
       window.localStorage.setItem(LOCALE_KEY, next);
@@ -470,7 +473,7 @@ export default function Game() {
   const saveToSlot = useCallback((slot: ManualSaveSlot) => {
     if (!game || game.campaign.ironman) return;
     const occupied = manualSaves.some((save) => save.slot === slot);
-    if (occupied && !window.confirm(locale === "zh" ? `覆盖档案 ${slot}？原存档会被替换。` : `Overwrite archive ${slot}? The previous save will be replaced.`)) return;
+    if (occupied && !window.confirm(localizedText(locale, `覆盖档案 ${slot}？原存档会被替换。`, `Overwrite archive ${slot}? The previous save will be replaced.`))) return;
     if (saveManualRun(slot, game)) {
       refreshManualSaves();
       playSound("stamp");
@@ -478,7 +481,7 @@ export default function Game() {
   }, [game, locale, manualSaves, playSound, refreshManualSaves]);
 
   const loadFromSlot = useCallback((slot: ManualSaveSlot) => {
-    if (game && !window.confirm(locale === "zh" ? "读取档案会用它替换当前自动存档。当前进度可先另存到手动槽。继续？" : "Loading this archive replaces the current autosave. You can save the current run to another slot first. Continue?")) return;
+    if (game && !window.confirm(localizedText(locale, "读取档案会用它替换当前自动存档。当前进度可先另存到手动槽。继续？", "Loading this archive replaces the current autosave. You can save the current run to another slot first. Continue?"))) return;
     const loaded = loadManualRun(slot);
     if (!loaded) return;
     setGame(loaded);
@@ -491,7 +494,7 @@ export default function Game() {
   }, [game, locale, playSound]);
 
   const deleteSlot = useCallback((slot: ManualSaveSlot) => {
-    if (!window.confirm(locale === "zh" ? `删除档案 ${slot}？此操作无法撤销。` : `Delete archive ${slot}? This cannot be undone.`)) return;
+    if (!window.confirm(localizedText(locale, `删除档案 ${slot}？此操作无法撤销。`, `Delete archive ${slot}? This cannot be undone.`))) return;
     deleteManualRun(slot);
     refreshManualSaves();
   }, [locale, refreshManualSaves]);
@@ -509,7 +512,7 @@ export default function Game() {
   }, [game]);
 
   const startConfiguredRun = useCallback(() => {
-    if (savedRun && !window.confirm(locale === "zh" ? "开始新游戏会替换当前自动存档。三个手动存档不会受影响。继续投稿？" : "Starting a new game replaces the current autosave. Your three manual archives are safe. Submit anyway?")) return;
+    if (savedRun && !window.confirm(localizedText(locale, "开始新游戏会替换当前自动存档。三个手动存档不会受影响。继续投稿？", "Starting a new game replaces the current autosave. Your three manual archives are safe. Submit anyway?"))) return;
     const parsed = Number(seedInput);
     startRun(selectedRole, Number.isSafeInteger(parsed) && parsed > 0 ? parsed : safeSeed(), runSetup);
   }, [locale, runSetup, savedRun, seedInput, selectedRole, startRun]);
@@ -636,9 +639,7 @@ export default function Game() {
             </span>
           </a>
           <div className="header-actions">
-            <button type="button" className="language-toggle" onClick={toggleLocale} aria-label={locale === "zh" ? "Switch to English" : "切换到中文"}>
-              {locale === "zh" ? "EN" : "中"}
-            </button>
+            <LanguageSelector locale={locale} onChange={changeLocale} />
             <button type="button" className="icon-button" onClick={toggleSound} aria-label={soundOn ? c.soundOff : c.soundOn}>
               {soundOn ? "♪" : "×♪"}
             </button>
@@ -700,19 +701,19 @@ export default function Game() {
                 </button>
               )}
               <button type="button" className="primary-button" onClick={() => setScreen("setup")}>
-                {locale === "zh" ? "新游戏 · 配置投稿" : "New Game · Configure Submission"} <span aria-hidden="true">→</span>
+                {localizedText(locale, "新游戏 · 配置投稿", "New Game · Configure Submission")} <span aria-hidden="true">→</span>
               </button>
               <button type="button" className="secondary-button" disabled={manualSaves.length === 0} onClick={() => openSaveManager("load")}>
-                {locale === "zh" ? `读取存档 · ${manualSaves.length}/3` : `Load Archive · ${manualSaves.length}/3`}
+                {localizedText(locale, `读取存档 · ${manualSaves.length}/3`, `Load Archive · ${manualSaves.length}/3`)}
               </button>
               <button type="button" className="secondary-button" onClick={() => setHelpOpen(true)}>
-                {locale === "zh" ? "帮助与结局档案" : "Help & Ending Archive"}
+                {localizedText(locale, "帮助与结局档案", "Help & Ending Archive")}
               </button>
               <button type="button" className="menu-exit-button" onClick={() => setExitNotice(true)}>
-                {locale === "zh" ? "退出游戏" : "Exit Game"}
+                {localizedText(locale, "退出游戏", "Exit Game")}
               </button>
             </div>
-            {exitNotice && <p className="exit-notice">{locale === "zh" ? "浏览器游戏无法关闭你的标签页——自动存档已完成，现在可以安心关闭页面。" : "A browser game cannot close your tab. Autosave is complete; it is safe to close this page."}</p>}
+            {exitNotice && <p className="exit-notice">{localizedText(locale, "浏览器游戏无法关闭你的标签页——自动存档已完成，现在可以安心关闭页面。", "A browser game cannot close your tab. Autosave is complete; it is safe to close this page.")}</p>}
             <div className="menu-records">
               <span>
                 <small>{c.localHigh}</small>
@@ -720,11 +721,11 @@ export default function Game() {
               </span>
               <span>
                 <small>{c.mayMeet}</small>
-                <strong>{CARDS.length} {locale === "zh" ? "张卡" : "cards"}</strong>
+                <strong>{CARDS.length} {localizedText(locale, "张卡", "cards")}</strong>
               </span>
               <span>
                 <small>{c.dangerous}</small>
-                <strong>{EVENTS.length} {locale === "zh" ? "个故事" : "stories"}</strong>
+                <strong>{EVENTS.length} {localizedText(locale, "个故事", "stories")}</strong>
               </span>
             </div>
           </div>
@@ -742,7 +743,7 @@ export default function Game() {
 
   if (!game && screen === "setup") {
     return <>
-      <NewGameSetup locale={locale} setup={runSetup} selectedRole={selectedRole} seed={seedInput} onSetup={setRunSetup} onRole={setSelectedRole} onSeed={setSeedInput} onStart={startConfiguredRun} onBack={() => setScreen("menu")} onHelp={() => setHelpOpen(true)} onToggleLocale={toggleLocale} />
+      <NewGameSetup locale={locale} setup={runSetup} selectedRole={selectedRole} seed={seedInput} onSetup={setRunSetup} onRole={setSelectedRole} onSeed={setSeedInput} onStart={startConfiguredRun} onBack={() => setScreen("menu")} onHelp={() => setHelpOpen(true)} onLocaleChange={changeLocale} />
       {helpOpen && <HelpModal locale={locale} onClose={() => setHelpOpen(false)} />}
     </>;
   }
@@ -809,9 +810,7 @@ export default function Game() {
           <ResourceChip icon="●" label={c.focus} value={game.resources.focus} danger={game.resources.focus === 0} />
         </div>
         <div className="header-actions compact-actions">
-          <button type="button" className="language-toggle compact-language" onClick={toggleLocale}>
-            {locale === "zh" ? "EN" : "中"}
-          </button>
+          <LanguageSelector locale={locale} onChange={changeLocale} compact />
           <button type="button" className="icon-button" onClick={() => setLogOpen((open) => !open)} aria-label={c.log}>
             ≡
           </button>
@@ -1150,7 +1149,7 @@ export default function Game() {
                 </span>
                 <span className="card-name">
                   <strong>{locale === "zh" ? card.name : card.en}</strong>
-                  <small>{locale === "zh" ? card.en : card.name}</small>
+                  {locale === "zh" && <small>{card.en}</small>}
                 </span>
                 <span className="card-keywords">
                   {(card.rarity ?? "common") !== "common" && <i className={`rarity-${card.rarity}`}>{card.rarity === "rare" ? c.rarityRare : c.rarityUncommon}</i>}
@@ -1235,7 +1234,7 @@ export default function Game() {
                       <i>{upgradedOffer ? c.upgradeCard : c.addCard}</i>
                     </span>
                     <strong>{locale === "zh" ? card.name : card.en}</strong>
-                    <small>{locale === "zh" ? card.en : card.name}</small>
+                    {locale === "zh" && <small>{card.en}</small>}
                     <p>{upgradedOffer ? upgradeDescription(card, locale) : cardRules(card, locale)}</p>
                     <span className="reward-delta">{cardDeltaSummary(card, locale)}</span>
                   </button>

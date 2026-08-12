@@ -1,6 +1,6 @@
 import type { CardDef, CommentDef, EventChoice, EventDef, Locale, RoleDef } from "./types";
 
-export const UI_COPY: Record<Locale, Record<string, string>> = {
+const BASE_UI_COPY = {
   zh: {
     home: "Reviewer #2 首页", soundOff: "关闭声音", soundOn: "开启声音", help: "打开玩法说明",
     coverAbstract: "一款关于有限 GPU、无限意见，以及在截止日期前保持科研诚信的卡牌 Roguelike。",
@@ -50,6 +50,170 @@ export const UI_COPY: Record<Locale, Record<string, string>> = {
     helpTitle: "Survive to the Decision Letter", readComments: "Decompose the issue", readCommentsBody: "Every comment has three routes with explicit capability steps. Off-topic cards no longer deal generic damage.", chooseActions: "Build your deck", chooseActionsBody: "Every four resolved comments grants a card or upgrade; stage clears grant relics. Targeted research trades 1 Focus for a relevant card.", consequencesTitle: "Own the consequences", consequencesBody: "Delays cost Mental Health and raise step standards. At 100% Risk, the paper is withdrawn.", defeatRounds: "Create combos", defeatRoundsBody: "Sequences such as Rigor → Experiment or Experiment → Writing strengthen matched steps. Conditions and relics keep changing the rules.", selectCard: "Select card", playCard: "Play", showLog: "Log", gotIt: "I have read the reviewer comments",
   },
 };
+
+type ExtraLocale = Exclude<Locale, "en" | "zh">;
+type UIKey = keyof typeof BASE_UI_COPY.en;
+
+const EXTRA_UI_COPY: Record<ExtraLocale, Partial<Record<UIKey, string>>> = {
+  ja: {
+    home: "Reviewer #2 ホーム", soundOff: "サウンドをミュート", soundOn: "サウンドを有効化", help: "ゲームガイドを開く",
+    coverAbstract: "有限のGPU、無限の査読コメント、締切前の研究公正をめぐるカード・ローグライク。",
+    runTime: "12～150分のキャンペーン", browserPlay: "ブラウザですぐ遊べる", localSave: "自動保存＋手動3スロット",
+    menuTitle: "論文が査読を生き延びる前に、あなたが締切を生き延びなければならない。",
+    menuDescription: "小さなデッキから始め、カードを獲得・強化し、遺物と継続効果を管理します。誠実な研究はゆっくり積み上がり、危険な近道は撤回リスクとなって戻ってきます。",
+    continue: "修正を続ける", daysLeft: "日", localHigh: "ローカル最高得点", mayMeet: "アクションカード", dangerous: "インタラクティブ物語",
+    tagline: "難易度5段階、期間6種類、エンディング16種。投稿ごとに異なる物語。",
+    funding: "研究費", mental: "メンタル", remaining: "残り", focus: "集中力", log: "行動ログを開く",
+    currentBoss: "現在のボス", resolved: "解決済みコメント", escalations: "追加要求", yourPaper: "あなたの論文", hideLog: "ログを閉じる", viewLog: "ログを見る", actionLog: "行動ログ",
+    round: "ラウンド", major: "重大", concern: "懸念", comment: "コメント", original: "原文", translation: "翻訳", gameplay: "ゲーム解説",
+    primary: "主要求", secondary: "副要求", severity: "深刻度", responseProgress: "対応ルート", delayed: "ターン遅延：基準が上昇しました。", exactHint: "能力が一致する行動だけが手順を進めます。正確な回答は集中力を返還します。",
+    ready: "実行準備", riskExecute: "リスクを受け入れて実行", execute: "カードを使う", selectHint: "対応ルートを選び、必要な能力を持つカードを探してください。",
+    manuscript: "論文ステータス", mentalState: "メンタルヘルス", risk: "撤回リスク", riskTitle: "100%で即座に失敗", riskLow: "研究記録はまだクリーンです。", riskMid: "短期的な数字とともに監査圧力が上昇中。", riskHigh: "高リスク：監査と再現性の要求が厳しくなります。", endDay: "一日を終える",
+    today: "今日の行動", cardHint: "カードを選んで実行", deck: "山札", discard: "捨て札", exhausted: "本日の消耗", response: "対応", emptyHand: "手札がありません", notEnough: "リソース不足",
+    tutorialTitle: "4ステップ", tutorial: "問題を読む → ルート選択 → 能力を合わせる → 全手順を完了", closeTutorial: "チュートリアルを閉じる",
+    randomEvent: "インタラクティブイベント", eventFootnote: "イベントへの対応は必須です。結果は会話終了まで伏せられます。",
+    finalScore: "最終スコア", comments: "コメント", strangest: "最も奇妙な事件", newHigh: "ローカル新記録", share: "結果カードを保存／共有", copied: "コピー済み", copyReport: "戦績をコピー", retry: "もう一度投稿", retrySeed: "同じSeedで再挑戦", returnHome: "ホームへ戻る",
+    rewardTitle: "修正から新しい研究方針が生まれた", rewardStage: "ステージ報酬：遺物を1つ選択", rewardCard: "デッキ報酬：カード追加または強化", chooseOne: "1つ選択してください。以後の戦略が変化します。", addCard: "デッキに追加", upgradeCard: "カード強化", gainRelic: "遺物を獲得", skipReward: "スキップしてメンタルを2回復", upgraded: "強化済み", rarityCommon: "一般", rarityUncommon: "上級", rarityRare: "希少",
+    activeEffects: "進行中の効果", relics: "遺物", noRelics: "遺物なし", caffeine: "カフェイン", insight: "洞察", technicalDebt: "技術的負債", reviewerFavor: "査読者の好感", pageDebt: "ページ超過",
+    keywordMatch: "一致", combo: "コンボ", retain: "保持", exhaust: "消耗", questionable: "危険", upgradedMark: "強化",
+    helpTitle: "Decision Letterまで生き残る", readComments: "コメントを分解", readCommentsBody: "各コメントには、必要能力が明示された3つの対応ルートがあります。無関係なカードでは進みません。", chooseActions: "デッキを構築", chooseActionsBody: "コメント4件ごとにカード追加または強化。ステージ突破で遺物を獲得します。", consequencesTitle: "結果を引き受ける", consequencesBody: "遅延はメンタルを削り基準を上げます。リスク100%で論文は撤回されます。", defeatRounds: "コンボを作る", defeatRoundsBody: "厳密性→実験、実験→執筆などの連鎖で一致した手順を強化できます。", selectCard: "カード選択", playCard: "実行", showLog: "ログ", gotIt: "査読コメントを確認しました",
+  },
+  ko: {
+    home: "Reviewer #2 홈", soundOff: "소리 끄기", soundOn: "소리 켜기", help: "게임 도움말 열기",
+    coverAbstract: "한정된 GPU, 끝없는 심사 의견, 마감 전 연구 윤리를 다루는 카드 로그라이크.",
+    runTime: "12~150분 캠페인", browserPlay: "브라우저에서 바로 플레이", localSave: "자동 저장 + 수동 슬롯 3개",
+    menuTitle: "논문이 심사를 통과하기 전에, 당신이 마감일까지 살아남아야 합니다.",
+    menuDescription: "작은 덱으로 시작해 카드를 획득하고 강화하며 유물과 지속 효과를 관리하세요. 정직한 연구는 천천히 쌓이고, 위험한 지름길은 철회 위험으로 돌아옵니다.",
+    continue: "수정 계속하기", daysLeft: "일", localHigh: "로컬 최고 점수", mayMeet: "행동 카드", dangerous: "인터랙티브 스토리",
+    tagline: "난이도 5단계, 기간 6종, 결말 16종. 투고마다 다른 이야기가 펼쳐집니다.",
+    funding: "연구비", mental: "정신력", remaining: "남은 기간", focus: "집중력", log: "행동 기록 열기",
+    currentBoss: "현재 보스", resolved: "해결한 의견", escalations: "추가 요구", yourPaper: "내 논문", hideLog: "기록 닫기", viewLog: "기록 보기", actionLog: "행동 기록",
+    round: "라운드", major: "중대", concern: "우려", comment: "의견", original: "원문", translation: "번역", gameplay: "게임 설명",
+    primary: "주요 요구", secondary: "보조 요구", severity: "심각도", responseProgress: "대응 경로", delayed: "턴 지연: 기준이 상승했습니다.", exactHint: "능력이 일치하는 행동만 단계를 진행합니다. 정확한 답변은 집중력을 돌려줍니다.",
+    ready: "실행 준비", riskExecute: "위험을 감수하고 실행", execute: "카드 사용", selectHint: "대응 경로를 고르고 필요한 능력의 카드를 찾으세요.",
+    manuscript: "논문 상태", mentalState: "정신 건강", risk: "철회 위험", riskTitle: "100%가 되면 즉시 실패", riskLow: "연구 기록은 아직 깨끗합니다.", riskMid: "단기 성과와 함께 감사 압력이 쌓입니다.", riskHigh: "고위험: 감사와 재현성 요구가 더 어려워집니다.", endDay: "하루 종료",
+    today: "오늘의 행동", cardHint: "카드를 선택한 뒤 사용", deck: "덱", discard: "버린 카드", exhausted: "오늘 소진", response: "대응", emptyHand: "손에 카드가 없습니다", notEnough: "자원 부족",
+    tutorialTitle: "4단계 시작", tutorial: "의견 읽기 → 경로 선택 → 능력 맞추기 → 모든 단계 완료", closeTutorial: "튜토리얼 닫기",
+    randomEvent: "인터랙티브 이벤트", eventFootnote: "이벤트는 반드시 처리해야 하며 결과는 대화가 끝날 때 공개됩니다.",
+    finalScore: "최종 점수", comments: "의견", strangest: "가장 이상한 사건", newHigh: "새 로컬 최고 기록", share: "결과 카드 저장／공유", copied: "복사됨", copyReport: "전적 복사", retry: "다시 투고", retrySeed: "같은 Seed 재도전", returnHome: "홈으로",
+    rewardTitle: "수정에서 새로운 연구 방향이 열렸습니다", rewardStage: "단계 보상: 유물 하나 선택", rewardCard: "덱 보상: 카드 추가 또는 강화", chooseOne: "하나를 선택하세요. 이후 전략이 달라집니다.", addCard: "덱에 추가", upgradeCard: "카드 강화", gainRelic: "유물 획득", skipReward: "건너뛰고 정신력 2 회복", upgraded: "강화됨", rarityCommon: "일반", rarityUncommon: "고급", rarityRare: "희귀",
+    activeEffects: "진행 효과", relics: "유물", noRelics: "유물 없음", caffeine: "카페인", insight: "통찰", technicalDebt: "기술 부채", reviewerFavor: "심사자 호감", pageDebt: "페이지 초과",
+    keywordMatch: "일치", combo: "콤보", retain: "유지", exhaust: "소진", questionable: "위험", upgradedMark: "강화",
+    helpTitle: "Decision Letter까지 살아남기", readComments: "의견 분해", readCommentsBody: "각 의견에는 필요한 능력이 명시된 세 가지 대응 경로가 있습니다. 관련 없는 카드는 진행되지 않습니다.", chooseActions: "덱 구성", chooseActionsBody: "의견 네 개마다 카드 추가 또는 강화, 단계 통과 시 유물을 얻습니다.", consequencesTitle: "결과 감당하기", consequencesBody: "지연은 정신력을 낮추고 기준을 높입니다. 위험 100%에서 논문이 철회됩니다.", defeatRounds: "콤보 만들기", defeatRoundsBody: "엄밀성→실험, 실험→글쓰기 같은 연계로 일치 단계를 강화합니다.", selectCard: "카드 선택", playCard: "사용", showLog: "기록", gotIt: "심사 의견을 확인했습니다",
+  },
+  es: {
+    home: "Inicio de Reviewer #2", soundOff: "Silenciar", soundOn: "Activar sonido", help: "Abrir la guía",
+    coverAbstract: "Un roguelike de cartas sobre GPU limitadas, revisiones infinitas e integridad científica antes de la fecha límite.",
+    runTime: "Campañas de 12–150 minutos", browserPlay: "Juega en el navegador", localSave: "Autoguardado + 3 ranuras manuales",
+    menuTitle: "Antes de que el artículo sobreviva a la revisión, tú debes sobrevivir a la fecha límite.",
+    menuDescription: "Empieza con un mazo compacto, consigue y mejora cartas, reúne reliquias y gestiona efectos persistentes. El trabajo honesto crece despacio; los atajos peligrosos vuelven como riesgo de retractación.",
+    continue: "Continuar revisión", daysLeft: "días", localHigh: "Récord local", mayMeet: "Cartas de acción", dangerous: "Historias interactivas",
+    tagline: "5 dificultades, 6 duraciones y 16 finales. Cada envío cuenta una historia diferente.",
+    funding: "Fondos", mental: "Salud mental", remaining: "Restante", focus: "Concentración", log: "Abrir registro",
+    currentBoss: "Jefe actual", resolved: "Comentarios resueltos", escalations: "Exigencias nuevas", yourPaper: "Tu artículo", hideLog: "Ocultar registro", viewLog: "Ver registro", actionLog: "Registro de acciones",
+    round: "Ronda", major: "Mayor", concern: "Problema", comment: "Comentario", original: "Texto original", translation: "Traducción", gameplay: "Nota de juego",
+    primary: "Principal", secondary: "Secundario", severity: "Gravedad", responseProgress: "Ruta de respuesta", delayed: "turnos: el estándar ha aumentado.", exactHint: "Solo las acciones con capacidades pertinentes avanzan la ruta. Una respuesta precisa devuelve Concentración.",
+    ready: "Lista para jugar", riskExecute: "Aceptar el riesgo y jugar", execute: "Jugar carta", selectHint: "Elige una ruta y busca cartas que cumplan sus pasos.",
+    manuscript: "Estado del manuscrito", mentalState: "Salud mental", risk: "Riesgo de retractación", riskTitle: "Al llegar al 100% pierdes la partida", riskLow: "El expediente científico sigue limpio.", riskMid: "Los números mejoran mientras crece la presión de auditoría.", riskHigh: "Riesgo alto: las auditorías y la reproducibilidad serán más difíciles.", endDay: "Terminar día",
+    today: "Acciones de hoy", cardHint: "Selecciona una carta y juégala", deck: "Mazo", discard: "Descarte", exhausted: "Agotadas hoy", response: "Respuesta", emptyHand: "No tienes cartas", notEnough: "Recursos insuficientes",
+    tutorialTitle: "4 pasos rápidos", tutorial: "Lee el problema → elige una ruta → combina capacidades → completa todos los pasos", closeTutorial: "Cerrar tutorial",
+    randomEvent: "Evento interactivo", eventFootnote: "Debes resolver el evento. El resultado permanece oculto hasta terminar el diálogo.",
+    finalScore: "Puntuación final", comments: "Comentarios", strangest: "Evento más extraño", newHigh: "Nuevo récord local", share: "Descargar／compartir resultado", copied: "Copiado", copyReport: "Copiar informe", retry: "Enviar de nuevo", retrySeed: "Reintentar la misma semilla", returnHome: "Volver al inicio",
+    rewardTitle: "La revisión abre una nueva dirección", rewardStage: "Recompensa de fase: elige una reliquia", rewardCard: "Recompensa de mazo: añade o mejora una carta", chooseOne: "Elige una. Cambiará el resto de la partida.", addCard: "Añadir al mazo", upgradeCard: "Mejorar carta", gainRelic: "Obtener reliquia", skipReward: "Omitir y recuperar 2 de Salud mental", upgraded: "Mejorada", rarityCommon: "Común", rarityUncommon: "Poco común", rarityRare: "Rara",
+    activeEffects: "Efectos activos", relics: "Reliquias", noRelics: "Sin reliquias", caffeine: "Cafeína", insight: "Perspicacia", technicalDebt: "Deuda técnica", reviewerFavor: "Favor del revisor", pageDebt: "Exceso de páginas",
+    keywordMatch: "Coincide", combo: "Combo", retain: "Conservar", exhaust: "Agotar", questionable: "Cuestionable", upgradedMark: "Mejorada",
+    helpTitle: "Sobrevive hasta la carta de decisión", readComments: "Desglosa el problema", readCommentsBody: "Cada comentario ofrece tres rutas con capacidades explícitas. Las cartas irrelevantes no avanzan.", chooseActions: "Construye tu mazo", chooseActionsBody: "Cada cuatro comentarios obtienes una carta o mejora; superar una fase concede una reliquia.", consequencesTitle: "Asume las consecuencias", consequencesBody: "Los retrasos reducen la salud mental y elevan el estándar. Al 100% de riesgo, el artículo se retira.", defeatRounds: "Crea combos", defeatRoundsBody: "Secuencias como Rigor → Experimento o Experimento → Escritura refuerzan los pasos pertinentes.", selectCard: "Elegir carta", playCard: "Jugar", showLog: "Registro", gotIt: "He leído los comentarios",
+  },
+};
+
+export const UI_COPY: Record<Locale, Record<UIKey, string>> = {
+  en: BASE_UI_COPY.en,
+  zh: BASE_UI_COPY.zh,
+  ja: { ...BASE_UI_COPY.en, ...EXTRA_UI_COPY.ja },
+  ko: { ...BASE_UI_COPY.en, ...EXTRA_UI_COPY.ko },
+  es: { ...BASE_UI_COPY.en, ...EXTRA_UI_COPY.es },
+};
+
+export const DEFAULT_LOCALE: Locale = "en";
+
+export const LANGUAGE_OPTIONS: ReadonlyArray<{ id: Locale; label: string; short: string; lang: string }> = [
+  { id: "en", label: "English", short: "EN", lang: "en" },
+  { id: "zh", label: "简体中文", short: "中", lang: "zh-CN" },
+  { id: "ja", label: "日本語", short: "日", lang: "ja" },
+  { id: "ko", label: "한국어", short: "한", lang: "ko" },
+  { id: "es", label: "Español", short: "ES", lang: "es" },
+];
+
+export function isLocale(value: unknown): value is Locale {
+  return LANGUAGE_OPTIONS.some((option) => option.id === value);
+}
+
+export function documentLanguage(locale: Locale) {
+  return LANGUAGE_OPTIONS.find((option) => option.id === locale)?.lang ?? "en";
+}
+
+const PHRASE_TRANSLATIONS: Record<ExtraLocale, Record<string, string>> = {
+  ja: {
+    "New Game · Configure Submission": "新規ゲーム · 投稿設定", "Load Archive": "アーカイブ読込", "Help & Ending Archive": "ヘルプとエンディング", "Exit Game": "ゲーム終了", "cards": "枚", "stories": "物語",
+    "New Submission": "新規投稿", "Help": "ヘルプ", "Main menu": "メインメニュー", "Configure your next academic crisis": "次の学術危機を設定する",
+    "Manuscript": "論文", "Review intensity": "査読強度", "Revision period": "修正期間", "Submission rules": "投稿ルール",
+    "Manuscript archetype": "論文タイプ", "Twenty paper types; twenty ways to be precisely criticized.": "20種類の論文、20通りの正確な批判。", "Select manuscript": "論文を選択",
+    "Passive": "パッシブ", "Reviewer target": "査読上の弱点", "Less reasonable reviews grant a higher score multiplier.": "理不尽な査読ほどスコア倍率が高くなります。",
+    "Short runs are denser; long runs support deeper deckbuilding.": "短期戦は濃密、長期戦はより深いデッキ構築が可能です。", "days": "日", "comments": "コメント",
+    "Custom Review Contract": "カスタム査読契約", "Specify the terms; own the consequences": "条件を決め、その結果を引き受ける", "Days": "日数", "Comment target": "目標コメント", "Days between events": "イベント間隔（日）",
+    "Read the fine print before signing. The reviewer will not.": "署名前に細則を読んでください。査読者は読みません。", "Irrevocable Submission (Ironman)": "撤回不能投稿（アイアンマン）",
+    "Keeps crash-safe autosave, but disables manual saves and rollback. Honor system—you still have developer tools.": "クラッシュ対策の自動保存は維持しますが、手動保存と巻き戻しは禁止。名誉制です。",
+    "Seed (blank for random)": "Seed（空欄でランダム）", "Submission summary": "投稿概要", "Sign & Submit": "署名して投稿",
+    "Save Current Revision": "現在の修正を保存", "Load Submission Archive": "投稿アーカイブを読み込む", "Saves remain in this browser on this device. No manuscript or data is uploaded.": "保存データはこの端末のブラウザ内だけに保持され、論文やデータは送信されません。",
+    "Ironman disables manual saves. Crash-safe autosave remains active.": "アイアンマンでは手動保存できません。クラッシュ対策の自動保存は有効です。", "FILED": "保存済み", "EMPTY": "空", "days left": "日残り",
+    "No manuscript filed": "保存された論文なし", "Suspiciously quiet for a submission portal.": "投稿システムとは思えない静けさ。", "Overwrite": "上書き", "Save here": "ここに保存", "Load": "読み込む", "Delete": "削除",
+    "Submission Timeline": "投稿タイムライン", "Only events that change the fate of the submission appear here. Every card-sized struggle remains in the action log.": "投稿の運命を変えた出来事だけを記録します。カードごとの奮闘は行動ログに残ります。", "Day": "日目",
+    "Leave the email alone for a moment": "メールを少し放置する", "Continue revision": "修正を続ける", "Save to archive slot": "アーカイブに保存", "Load an archive slot": "アーカイブを読み込む", "View submission timeline": "投稿タイムラインを見る", "Rules and endings": "ルールとエンディング", "Save & return to title": "保存してタイトルへ",
+  },
+  ko: {
+    "New Game · Configure Submission": "새 게임 · 투고 설정", "Load Archive": "보관함 불러오기", "Help & Ending Archive": "도움말과 결말", "Exit Game": "게임 종료", "cards": "장", "stories": "개 이야기",
+    "New Submission": "새 투고", "Help": "도움말", "Main menu": "메인 메뉴", "Configure your next academic crisis": "다음 학술 위기를 설정하세요",
+    "Manuscript": "논문", "Review intensity": "심사 강도", "Revision period": "수정 기간", "Submission rules": "투고 규칙",
+    "Manuscript archetype": "논문 유형", "Twenty paper types; twenty ways to be precisely criticized.": "스무 가지 논문, 스무 가지 정확한 비판 방식.", "Select manuscript": "논문 선택",
+    "Passive": "패시브", "Reviewer target": "심사 약점", "Less reasonable reviews grant a higher score multiplier.": "불합리한 심사일수록 점수 배율이 높습니다.",
+    "Short runs are denser; long runs support deeper deckbuilding.": "짧은 게임은 밀도가 높고, 긴 게임은 더 깊은 덱 구성이 가능합니다.", "days": "일", "comments": "의견",
+    "Custom Review Contract": "사용자 지정 심사 계약", "Specify the terms; own the consequences": "조건을 정하고 결과를 감당하세요", "Days": "일수", "Comment target": "목표 의견", "Days between events": "이벤트 간격(일)",
+    "Read the fine print before signing. The reviewer will not.": "서명 전에 작은 글씨를 읽으세요. 심사자는 읽지 않습니다.", "Irrevocable Submission (Ironman)": "철회 불가 투고(아이언맨)",
+    "Keeps crash-safe autosave, but disables manual saves and rollback. Honor system—you still have developer tools.": "충돌 방지 자동 저장은 유지하지만 수동 저장과 되돌리기는 비활성화됩니다. 명예 규칙입니다.",
+    "Seed (blank for random)": "Seed(비워두면 무작위)", "Submission summary": "투고 요약", "Sign & Submit": "서명하고 투고",
+    "Save Current Revision": "현재 수정 저장", "Load Submission Archive": "투고 보관함 불러오기", "Saves remain in this browser on this device. No manuscript or data is uploaded.": "저장은 이 기기의 브라우저에만 남으며 논문이나 데이터는 업로드되지 않습니다.",
+    "Ironman disables manual saves. Crash-safe autosave remains active.": "아이언맨은 수동 저장을 금지하지만 충돌 방지 자동 저장은 유지됩니다.", "FILED": "저장됨", "EMPTY": "비어 있음", "days left": "일 남음",
+    "No manuscript filed": "저장된 논문 없음", "Suspiciously quiet for a submission portal.": "투고 시스템치고는 수상할 만큼 조용합니다.", "Overwrite": "덮어쓰기", "Save here": "여기에 저장", "Load": "불러오기", "Delete": "삭제",
+    "Submission Timeline": "투고 타임라인", "Only events that change the fate of the submission appear here. Every card-sized struggle remains in the action log.": "투고의 운명을 바꾼 사건만 기록합니다. 카드 단위의 분투는 행동 기록에 남습니다.", "Day": "일차",
+    "Leave the email alone for a moment": "잠시 이메일에서 벗어나기", "Continue revision": "수정 계속", "Save to archive slot": "보관함에 저장", "Load an archive slot": "보관함 불러오기", "View submission timeline": "투고 타임라인 보기", "Rules and endings": "규칙과 결말", "Save & return to title": "저장하고 타이틀로",
+  },
+  es: {
+    "New Game · Configure Submission": "Nueva partida · Configurar envío", "Load Archive": "Cargar archivo", "Help & Ending Archive": "Ayuda y finales", "Exit Game": "Salir", "cards": "cartas", "stories": "historias",
+    "New Submission": "Nuevo envío", "Help": "Ayuda", "Main menu": "Menú principal", "Configure your next academic crisis": "Configura tu próxima crisis académica",
+    "Manuscript": "Manuscrito", "Review intensity": "Intensidad de revisión", "Revision period": "Periodo de revisión", "Submission rules": "Reglas del envío",
+    "Manuscript archetype": "Tipo de manuscrito", "Twenty paper types; twenty ways to be precisely criticized.": "Veinte tipos de artículo; veinte formas de recibir críticas precisas.", "Select manuscript": "Seleccionar manuscrito",
+    "Passive": "Pasiva", "Reviewer target": "Punto débil", "Less reasonable reviews grant a higher score multiplier.": "Las revisiones menos razonables conceden un multiplicador mayor.",
+    "Short runs are denser; long runs support deeper deckbuilding.": "Las partidas cortas son más intensas; las largas permiten mazos más profundos.", "days": "días", "comments": "comentarios",
+    "Custom Review Contract": "Contrato de revisión personalizado", "Specify the terms; own the consequences": "Define las condiciones y asume las consecuencias", "Days": "Días", "Comment target": "Objetivo de comentarios", "Days between events": "Días entre eventos",
+    "Read the fine print before signing. The reviewer will not.": "Lee la letra pequeña antes de firmar. El revisor no lo hará.", "Irrevocable Submission (Ironman)": "Envío irrevocable (Ironman)",
+    "Keeps crash-safe autosave, but disables manual saves and rollback. Honor system—you still have developer tools.": "Conserva el autoguardado de emergencia, pero desactiva guardado manual y retroceso. Es un sistema de honor.",
+    "Seed (blank for random)": "Semilla (vacía = aleatoria)", "Submission summary": "Resumen del envío", "Sign & Submit": "Firmar y enviar",
+    "Save Current Revision": "Guardar revisión actual", "Load Submission Archive": "Cargar archivo de envíos", "Saves remain in this browser on this device. No manuscript or data is uploaded.": "Las partidas se guardan solo en este navegador. No se sube ningún manuscrito ni dato.",
+    "Ironman disables manual saves. Crash-safe autosave remains active.": "Ironman desactiva los guardados manuales, pero mantiene el autoguardado de emergencia.", "FILED": "ARCHIVADO", "EMPTY": "VACÍO", "days left": "días restantes",
+    "No manuscript filed": "Ningún manuscrito guardado", "Suspiciously quiet for a submission portal.": "Demasiado tranquilo para ser un portal de envíos.", "Overwrite": "Sobrescribir", "Save here": "Guardar aquí", "Load": "Cargar", "Delete": "Eliminar",
+    "Submission Timeline": "Cronología del envío", "Only events that change the fate of the submission appear here. Every card-sized struggle remains in the action log.": "Aquí aparecen solo los eventos que cambian el destino del envío. Cada lucha con las cartas queda en el registro.", "Day": "Día",
+    "Leave the email alone for a moment": "Deja el correo por un momento", "Continue revision": "Continuar revisión", "Save to archive slot": "Guardar en una ranura", "Load an archive slot": "Cargar una ranura", "View submission timeline": "Ver cronología", "Rules and endings": "Reglas y finales", "Save & return to title": "Guardar y volver al título",
+  },
+};
+
+export function localizedText(locale: Locale, zh: string, en: string) {
+  if (locale === "zh") return zh;
+  if (locale === "en") return en;
+  if (en.startsWith("Load Archive · ")) {
+    return `${PHRASE_TRANSLATIONS[locale]["Load Archive"] ?? "Load Archive"} · ${en.slice("Load Archive · ".length)}`;
+  }
+  return PHRASE_TRANSLATIONS[locale][en] ?? en;
+}
 
 const ROLE_EN: Record<string, { pitch: string; passive: string; weakness: string }> = {
   method: { pitch: "The idea is novel; the experiment table is always one row short.", passive: "Your first Experiment card each day gains +1 Response.", weakness: "Clinical and external-validation comments are 1 point harder." },

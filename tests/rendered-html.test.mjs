@@ -30,12 +30,13 @@ test("server-renders the playable game entry screen", async () => {
 
   const html = await response.text();
   assert.match(html, /<title>Reviewer #2: Major Revision<\/title>/i);
-  assert.match(html, /新游戏 · 配置投稿/);
+  assert.match(html, /New Game · Configure Submission/);
   assert.match(html, /ACADEMIC SURVIVAL DECKBUILDER/);
-  assert.match(html, /本地最高分/);
-  assert.match(html, /528 张卡/);
-  assert.match(html, /256 个故事/);
-  assert.match(html, /16 个结局/);
+  assert.match(html, /Local high score/);
+  assert.match(html, /528(?:<!-- -->|\s)*cards/);
+  assert.match(html, /256(?:<!-- -->|\s)*stories/);
+  assert.match(html, /16 endings/);
+  assert.match(html, /<html lang="en"/);
   assert.match(html, /og\.png/);
   assert.doesNotMatch(html, /codex-preview|Building your site|react-loading-skeleton/i);
 });

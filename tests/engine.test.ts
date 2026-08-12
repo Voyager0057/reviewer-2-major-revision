@@ -21,6 +21,9 @@ import {
   nextRandom,
 } from "../app/game/engine";
 import {
+  DEFAULT_LOCALE,
+  LANGUAGE_OPTIONS,
+  UI_COPY,
   cardRules,
   commentNote,
   commentQuote,
@@ -41,6 +44,21 @@ function acceptFirstReward(state: GameState) {
 function playableRun(roleId = "method", seed = 1) {
   return acceptFirstReward(createGame(roleId, seed));
 }
+
+test("English is the default and five language choices expose complete core UI copy", () => {
+  assert.equal(DEFAULT_LOCALE, "en");
+  assert.deepEqual(LANGUAGE_OPTIONS.map((option) => option.id), ["en", "zh", "ja", "ko", "es"]);
+  const englishKeys = Object.keys(UI_COPY.en).sort();
+  for (const option of LANGUAGE_OPTIONS) {
+    assert.deepEqual(Object.keys(UI_COPY[option.id]).sort(), englishKeys);
+    assert.ok(UI_COPY[option.id].menuTitle.trim());
+    assert.ok(UI_COPY[option.id].endDay.trim());
+    assert.ok(UI_COPY[option.id].helpTitle.trim());
+  }
+  assert.notEqual(UI_COPY.ja.menuTitle, UI_COPY.en.menuTitle);
+  assert.notEqual(UI_COPY.ko.menuTitle, UI_COPY.en.menuTitle);
+  assert.notEqual(UI_COPY.es.menuTitle, UI_COPY.en.menuTitle);
+});
 
 test("the same seed and role produce exactly the same run and opening reward", () => {
   const first = createGame("method", 424242);
