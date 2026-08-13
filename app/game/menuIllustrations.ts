@@ -1,5 +1,8 @@
 import deadlineDawn from "./assets/menu/deadline-dawn.jpg";
+import campusBlackout from "./assets/menu/campus-blackout.jpg";
+import posterSession from "./assets/menu/poster-session.jpg";
 import reviewerNightmare from "./assets/menu/reviewer-nightmare.jpg";
+import reviewerTribunal from "./assets/menu/reviewer-tribunal.jpg";
 import revisionNight from "./assets/menu/revision-night.jpg";
 import submissionSunrise from "./assets/menu/submission-sunrise.jpg";
 
@@ -30,6 +33,33 @@ export const MENU_ILLUSTRATIONS = [
     titleEn: "One minor comment becomes a supplement.",
     caption: "打印机仍在工作。你开始怀疑它和审稿人之间存在未披露的利益关系。",
     captionEn: "The printer keeps working. You suspect an undisclosed conflict of interest with the reviewer.",
+  },
+  {
+    id: "campus-blackout",
+    src: campusBlackout,
+    kicker: "01:43 · CAMPUS BLACKOUT",
+    title: "整栋楼停电，只剩审稿意见亮着。",
+    titleEn: "The building goes dark. The comments remain illuminated.",
+    caption: "你抱着电脑穿过雨夜，去寻找全校最后一个仍在呼吸的插座。",
+    captionEn: "You carry the laptop through the rain toward the last outlet on campus that still appears alive.",
+  },
+  {
+    id: "reviewer-tribunal",
+    src: reviewerTribunal,
+    kicker: "09:00 · EDITORIAL HEARING",
+    title: "匿名评审入席。答辩人没有匿名。",
+    titleEn: "The anonymous reviewer takes a seat. You do not get anonymity.",
+    caption: "你准备了四十七页回复信，对方准备了一个名为“小问题”的问题。",
+    captionEn: "You bring forty-seven pages of rebuttal. They bring one question described as minor.",
+  },
+  {
+    id: "poster-session",
+    src: posterSession,
+    kicker: "16:20 · POSTER HALL",
+    title: "有人停下来，认真读了你的图。",
+    titleEn: "Someone stops and actually reads your figure.",
+    caption: "历经四轮修改后，那条误差棒终于换来一个真实的问题，而不是另一条审稿意见。",
+    captionEn: "After four revisions, the error bar earns a real question instead of another reviewer comment.",
   },
   {
     id: "submission-sunrise",

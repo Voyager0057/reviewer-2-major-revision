@@ -43,8 +43,8 @@ Each day asks uncomfortable questions:
 
 - **528 action cards** covering experiments, statistics, writing, reproducibility, collaboration, and questionable shortcuts, each with a short research-life vignette
 - **160 reviewer comments** with three response routes and explicit capability requirements
-- **256 illustrated interactive story events** across infrastructure, clusters, advisors, coauthors, data, ethics, funding, open science, competition, and submission systems. Twelve hand-painted scenes are assigned by event family first, with topic-aware matching for older events.
-- A four-scene **cinematic title gallery** that moves from revision night to deadline dawn, reviewer nightmare, and the quiet camera-ready aftermath—with manual navigation, pause, and reduced-motion support
+- **256 illustrated interactive story events** across infrastructure, clusters, advisors, coauthors, data, ethics, funding, open science, competition, and submission systems. Seventeen hand-painted scenes are assigned by event family first, with topic-aware matching for older events.
+- A seven-scene **cinematic title gallery** spanning revision night, campus blackout, deadline dawn, reviewer tribunal, paper nightmare, camera-ready aftermath, and the poster hall—with manual navigation, pause, and reduced-motion support
 - **20 manuscript archetypes**, each with a different starting deck, passive ability, and reviewer weakness
 - **48 research relics** and **40 revision tasks**
 - **16 endings**, including Best Paper, Open Science Hero, Replication Legend, Clean Review, speedrun, last-minute upload, Minor Revision, Major Revision, R&R, rejection, burnout, and retraction
@@ -89,7 +89,7 @@ Ironman keeps a crash-safe autosave but disables manual saving and rollback. It 
 
 ## Interactive events
 
-Events are illustrated academic-comedy stories rather than immediate stat popups. Twelve reusable hand-painted scenes distinguish blackouts, server maintenance, advisor rewrites, ethics boards, lab wellbeing, competing preprints, collaboration, publicity, administration, data investigations, and submission emergencies. The 128 grand-expansion events use explicit family-to-art assignments; older events use topic-aware matching rather than arbitrary random art.
+Events are illustrated academic-comedy stories rather than immediate stat popups. Seventeen reusable hand-painted scenes distinguish blackouts, server maintenance, advisor rewrites, missing coauthors, ethics boards, lab wellbeing, competing preprints, clinical validation, funding freezes, collaboration, publicity, administration, data-leakage audits, camera-ready chaos, and submission emergencies. The 128 grand-expansion events use explicit family-to-art assignments; older events use topic-aware matching rather than arbitrary random art.
 
 1. A lab outage, maintenance window, advisor interruption, data shift, coauthor crisis, or equally plausible disaster occurs.
 2. You see the choices, but not their numerical rewards or costs.
@@ -138,9 +138,9 @@ Your language preference is stored locally in the browser.
 
 你需要在截止日期前管理 GPU、经费、专注、精神状态和撤稿风险，并处理与卡牌能力直接关联的审稿意见。每条意见提供三条解决路线；只有真正匹配所需能力的卡牌才能推进对应步骤。
 
-事件会用十二张论文风插图建立场景，分别覆盖断电、服务器维修、导师重写、伦理审查、研究者状态、竞争预印本、开放协作、宣传危机、学院行政、数据调查和投稿事故等主题。128 个大型扩展事件按事件家族明确配图，旧事件再根据题材智能匹配，不会随机贴图。你先决定怎么处理，再随着人物对话和现场变化连续做出两次更具体的选择；故事结尾才自然显露后果，并把完整经历写进投稿时间线。每张手牌也新增了一句双语科研生活小故事。
+事件会用十七张论文风插图建立场景，分别覆盖断电、服务器维修、导师重写、合作者失联、伦理审查、研究者状态、竞争预印本、临床外部验证、经费冻结、开放协作、宣传危机、学院行政、数据泄漏审计、终稿格式事故和投稿系统等主题。128 个大型扩展事件按事件家族明确配图，旧事件再根据题材智能匹配，不会随机贴图。你先决定怎么处理，再随着人物对话和现场变化连续做出两次更具体的选择；故事结尾才自然显露后果，并把完整经历写进投稿时间线。每张手牌也新增了一句双语科研生活小故事。
 
-主菜单采用左侧游戏选项、右侧四幕手绘叙事画廊的布局，依次呈现深夜返修、截稿黎明、审稿噩梦和终稿后的清晨；支持自动轮播、前后切换、指定场景、暂停以及减少动态模式。投稿档案室会记录历史战役、生涯统计，以及发现过的解决路线、事件、卡牌、遗物和结局。帮助页面只保留玩法说明；显示、声音、动画、字号、卡面密度和危险操作确认可以在主菜单与游戏内共同调整。
+主菜单采用左侧游戏选项、右侧七幕手绘叙事画廊的布局，依次呈现深夜返修、校园断电、截稿黎明、匿名评审庭、审稿噩梦、终稿后的清晨和录用后的海报现场；支持自动轮播、前后切换、指定场景、暂停以及减少动态模式。投稿档案室会记录历史战役、生涯统计，以及发现过的解决路线、事件、卡牌、遗物和结局。帮助页面只保留玩法说明；显示、声音、动画、字号、卡面密度和危险操作确认可以在主菜单与游戏内共同调整。
 
 游戏包含 528 张行动卡、160 条审稿意见、256 个互动故事事件、20 种论文类型、48 件遗物、5 档难度、6 种周期和 16 种结局。支持自动存档、三个手动存档槽、铁人模式、可导出的本地战役档案、本地最高分和单文件离线游玩。
 
