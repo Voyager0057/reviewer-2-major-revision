@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CARDS, COMMENTS, COMMENT_BY_ID, EVENTS, EVENT_BY_ID, METRICS, METRIC_META, RELICS, ROLE_BY_ID, ROLES } from "./data";
 import { ENDING_IDS } from "./engine";
 import { LANGUAGE_OPTIONS, UI_COPY, eventTitle, localizedText, roleText } from "./i18n";
+import { MENU_ILLUSTRATIONS } from "./menuIllustrations";
 import { CAMPAIGN_LENGTHS, DIFFICULTIES, campaignLengthFor, difficultyFor, resolveCampaignConfig } from "./settings";
 import type { CareerProfile } from "./career";
 import type { GamePreferences } from "./preferences";
@@ -407,6 +408,14 @@ export function MainMenu({ locale, view, savedRun, saves, career, best, soundOn,
   onExportArchive: () => void;
   onResetArchive: () => void;
 }) {
+  const [heroSlide, setHeroSlide] = useState(0);
+  const [heroPaused, setHeroPaused] = useState(false);
+  useEffect(() => {
+    if (view !== "desk" || heroPaused || preferences.reducedMotion) return;
+    const timer = window.setInterval(() => setHeroSlide((current) => (current + 1) % MENU_ILLUSTRATIONS.length), 8000);
+    return () => window.clearInterval(timer);
+  }, [heroPaused, preferences.reducedMotion, view]);
+  const activeIllustration = MENU_ILLUSTRATIONS[heroSlide];
   const nav = [
     { id: "continue", icon: "▶", label: t(locale, "继续抢救论文", "Continue the Revision"), detail: savedRun ? t(locale, `还剩 ${savedRun.resources.days} 天`, `${savedRun.resources.days} days remain`) : t(locale, "暂无自动存档", "No autosave on file"), action: onContinue, disabled: !savedRun },
     { id: "new", icon: "+", label: t(locale, "再投一篇试试", "Submit Another Paper"), detail: t(locale, "配置一场新的学术危机", "Configure a new academic crisis"), action: onNew },
@@ -425,7 +434,20 @@ export function MainMenu({ locale, view, savedRun, saves, career, best, soundOn,
     </aside>
     <section className="title-menu-content">
       {view === "desk" && <div className="lab-hero">
-        <div className="lab-scene" aria-hidden="true"><div className="office-window"><i /><i /><i /></div><div className="office-monitor"><div className="monitor-bar">MR-2026-042 · REVISION</div><div className="monitor-copy"><b>Reviewer #2</b><span>Major Revision</span><em>Please add more experiments.</em><i /><i /><i /></div><div className="monitor-stand" /></div><div className="paper-stack"><i /><i /><i /><span>R4</span></div><div className="coffee-cup">☕</div><div className="gpu-tower"><i /><i /><i /><b>GPU</b></div></div>
+        <div className="menu-illustration-reel" aria-hidden="true">
+          {MENU_ILLUSTRATIONS.map((illustration, index) => <img src={illustration.src} className={index === heroSlide ? "is-active" : ""} alt="" key={illustration.id} />)}
+        </div>
+        <div className="menu-scene-caption" aria-live="polite">
+          <small>{activeIllustration.kicker}</small>
+          <strong>{locale === "zh" ? activeIllustration.title : activeIllustration.titleEn}</strong>
+          <span>{locale === "zh" ? activeIllustration.caption : activeIllustration.captionEn}</span>
+        </div>
+        <div className="menu-reel-controls" aria-label={t(locale, "主菜单场景", "Title-screen scenes")}>
+          <button type="button" className="reel-step" onClick={() => setHeroSlide((heroSlide + MENU_ILLUSTRATIONS.length - 1) % MENU_ILLUSTRATIONS.length)} aria-label={t(locale, "上一幕", "Previous scene")}>←</button>
+          <div>{MENU_ILLUSTRATIONS.map((illustration, index) => <button type="button" className={index === heroSlide ? "is-active" : ""} onClick={() => setHeroSlide(index)} aria-label={`${t(locale, "场景", "Scene")} ${index + 1}`} key={illustration.id}><i /></button>)}</div>
+          <button type="button" onClick={() => setHeroPaused((paused) => !paused)} aria-label={heroPaused ? t(locale, "继续轮播", "Resume slideshow") : t(locale, "暂停轮播", "Pause slideshow")}>{heroPaused ? "▶" : "Ⅱ"}</button>
+          <button type="button" className="reel-step" onClick={() => setHeroSlide((heroSlide + 1) % MENU_ILLUSTRATIONS.length)} aria-label={t(locale, "下一幕", "Next scene")}>→</button>
+        </div>
         <div className="hero-docket"><p className="eyebrow">ACADEMIC SURVIVAL DECKBUILDER</p><h1>{savedRun ? t(locale, "返修还没有结束。", "The revision is still alive.") : t(locale, "论文能不能收，先看你能不能活到截止日。", "Before the paper survives review, survive the deadline.")}</h1><p>{savedRun ? t(locale, `自动存档停在第 ${savedRun.turn} 天：已解决 ${savedRun.resolved}/${savedRun.target} 条意见，Reviewer #2 仍在输入。`, `Autosave waits on day ${savedRun.turn}: ${savedRun.resolved}/${savedRun.target} comments resolved, and Reviewer #2 is still typing.`) : t(locale, "有限的 GPU、无限的审稿意见，以及一套会记住每次失败的投稿档案。", "Finite GPUs, infinite reviewer comments, and a submission archive that remembers every failure.")}</p><div className="hero-stat-row"><span><small>{t(locale, "最高分", "High score")}</small><strong>{best?.score.toLocaleString() ?? "—"}</strong></span><span><small>{t(locale, "已发现事件", "Events found")}</small><strong>{career.discoveries.events.length}/{EVENTS.length}</strong></span><span><small>{t(locale, "结局档案", "Endings filed")}</small><strong>{career.discoveries.endings.length}/{ENDING_IDS.length}</strong></span></div></div>
         {exitNotice && <div className="lights-out-note"><b>{t(locale, "灯已经关了。", "The lab lights are off.")}</b><span>{t(locale, "自动存档已完成，现在可以安心关闭标签页。", "Autosave is complete. It is safe to close this tab.")}</span></div>}
       </div>}

@@ -20,6 +20,8 @@ test("offline release is one self-contained playable HTML file", async () => {
   assert.match(html, /한국어/);
   assert.match(html, /Español/);
   assert.match(html, /data:image\/jpeg;base64,/, "expected embedded event illustrations");
+  assert.match(html, /REVISION NIGHT/, "expected illustrated title-screen reel copy");
+  assert.match(html, /Title-screen scenes/, "expected title-screen reel controls");
   assert.doesNotMatch(html, /Outcome pending|Resolution remains sealed|收益与代价已封存/);
   assert.ok(inlineStyle?.[1].length > 1_000, "expected embedded game styles");
   assert.ok(inlineScript?.[1].length > 400_000, "expected embedded game code and content");
