@@ -18,7 +18,7 @@ const BASE_UI_COPY = {
     manuscript: "论文状态", mentalState: "精神状态", risk: "撤稿风险", riskTitle: "达到 100% 会立即失败", riskLow: "研究记录尚且干净。", riskMid: "短期数字变好，审计压力正在积累。", riskHigh: "高风险：复现与审计意见会更难。", endDay: "结束今天",
     today: "今日行动", cardHint: "点击选牌，再执行", deck: "牌库", discard: "弃牌", exhausted: "本日耗尽", response: "回应", emptyHand: "手牌已空", notEnough: "资源不足",
     tutorialTitle: "4 步上手", tutorial: "读意见 → 选解决路线 → 找能力匹配卡 → 完成全部步骤", closeTutorial: "关闭教程",
-    randomEvent: "互动事件", eventFootnote: "事件必须处理；选择不会预览收益，对话结束后才会结算。",
+    randomEvent: "互动事件",
     finalScore: "最终分数", comments: "意见", strangest: "最离谱事件", newHigh: "新的本地最高分", share: "下载 / 分享结局卡", copied: "已复制", copyReport: "复制战报", retry: "再投一次", retrySeed: "相同 Seed 重试", returnHome: "返回首页",
     rewardTitle: "修改获得新方向", rewardStage: "阶段奖励：选择一件遗物", rewardCard: "构筑奖励：加入新卡或升级旧卡", chooseOne: "三选一，本次选择会改变后续牌组。", addCard: "加入牌组", upgradeCard: "升级卡牌", gainRelic: "获得遗物", skipReward: "跳过并回复 2 精神", upgraded: "已升级", rarityCommon: "普通", rarityUncommon: "进阶", rarityRare: "稀有",
     activeEffects: "本局效果", relics: "遗物", noRelics: "尚未获得遗物", caffeine: "咖啡因", insight: "洞见", technicalDebt: "技术债", reviewerFavor: "审稿人好感", pageDebt: "版面债",
@@ -42,7 +42,7 @@ const BASE_UI_COPY = {
     manuscript: "Manuscript status", mentalState: "Mental Health", risk: "Retraction Risk", riskTitle: "Reaching 100% immediately ends the run", riskLow: "The research record is still clean.", riskMid: "Short-term numbers improve while audit pressure accumulates.", riskHigh: "High risk: audit and reproducibility comments become harder.", endDay: "End Day",
     today: "Today's actions", cardHint: "Select a card, then play it", deck: "Deck", discard: "Discard", exhausted: "Exhausted today", response: "Response", emptyHand: "Your hand is empty", notEnough: "Not enough resources",
     tutorialTitle: "4 quick steps", tutorial: "Read the issue → choose a route → match capabilities → complete every step", closeTutorial: "Close tutorial",
-    randomEvent: "Interactive Event", eventFootnote: "The event must be handled. Outcomes stay sealed until the dialogue concludes.",
+    randomEvent: "Interactive Event",
     finalScore: "Final Score", comments: "Comments", strangest: "Strangest event", newHigh: "New Local High Score", share: "Download / Share Result Card", copied: "Copied", copyReport: "Copy Run Report", retry: "Submit Again", retrySeed: "Retry Same Seed", returnHome: "Return Home",
     rewardTitle: "The Revision Opens a New Direction", rewardStage: "Stage reward: choose one relic", rewardCard: "Deck reward: add a card or upgrade one", chooseOne: "Choose one. It will shape the rest of this run.", addCard: "Add to deck", upgradeCard: "Upgrade card", gainRelic: "Take relic", skipReward: "Skip and restore 2 Mental", upgraded: "Upgraded", rarityCommon: "Common", rarityUncommon: "Uncommon", rarityRare: "Rare",
     activeEffects: "Run effects", relics: "Relics", noRelics: "No relics yet", caffeine: "Caffeine", insight: "Insight", technicalDebt: "Technical Debt", reviewerFavor: "Reviewer Favor", pageDebt: "Page Debt",
@@ -71,7 +71,7 @@ const EXTRA_UI_COPY: Record<ExtraLocale, Partial<Record<UIKey, string>>> = {
     manuscript: "論文ステータス", mentalState: "メンタルヘルス", risk: "撤回リスク", riskTitle: "100%で即座に失敗", riskLow: "研究記録はまだクリーンです。", riskMid: "短期的な数字とともに監査圧力が上昇中。", riskHigh: "高リスク：監査と再現性の要求が厳しくなります。", endDay: "一日を終える",
     today: "今日の行動", cardHint: "カードを選んで実行", deck: "山札", discard: "捨て札", exhausted: "本日の消耗", response: "対応", emptyHand: "手札がありません", notEnough: "リソース不足",
     tutorialTitle: "4ステップ", tutorial: "問題を読む → ルート選択 → 能力を合わせる → 全手順を完了", closeTutorial: "チュートリアルを閉じる",
-    randomEvent: "インタラクティブイベント", eventFootnote: "イベントへの対応は必須です。結果は会話終了まで伏せられます。",
+    randomEvent: "インタラクティブイベント",
     finalScore: "最終スコア", comments: "コメント", strangest: "最も奇妙な事件", newHigh: "ローカル新記録", share: "結果カードを保存／共有", copied: "コピー済み", copyReport: "戦績をコピー", retry: "もう一度投稿", retrySeed: "同じSeedで再挑戦", returnHome: "ホームへ戻る",
     rewardTitle: "修正から新しい研究方針が生まれた", rewardStage: "ステージ報酬：遺物を1つ選択", rewardCard: "デッキ報酬：カード追加または強化", chooseOne: "1つ選択してください。以後の戦略が変化します。", addCard: "デッキに追加", upgradeCard: "カード強化", gainRelic: "遺物を獲得", skipReward: "スキップしてメンタルを2回復", upgraded: "強化済み", rarityCommon: "一般", rarityUncommon: "上級", rarityRare: "希少",
     activeEffects: "進行中の効果", relics: "遺物", noRelics: "遺物なし", caffeine: "カフェイン", insight: "洞察", technicalDebt: "技術的負債", reviewerFavor: "査読者の好感", pageDebt: "ページ超過",
@@ -94,7 +94,7 @@ const EXTRA_UI_COPY: Record<ExtraLocale, Partial<Record<UIKey, string>>> = {
     manuscript: "논문 상태", mentalState: "정신 건강", risk: "철회 위험", riskTitle: "100%가 되면 즉시 실패", riskLow: "연구 기록은 아직 깨끗합니다.", riskMid: "단기 성과와 함께 감사 압력이 쌓입니다.", riskHigh: "고위험: 감사와 재현성 요구가 더 어려워집니다.", endDay: "하루 종료",
     today: "오늘의 행동", cardHint: "카드를 선택한 뒤 사용", deck: "덱", discard: "버린 카드", exhausted: "오늘 소진", response: "대응", emptyHand: "손에 카드가 없습니다", notEnough: "자원 부족",
     tutorialTitle: "4단계 시작", tutorial: "의견 읽기 → 경로 선택 → 능력 맞추기 → 모든 단계 완료", closeTutorial: "튜토리얼 닫기",
-    randomEvent: "인터랙티브 이벤트", eventFootnote: "이벤트는 반드시 처리해야 하며 결과는 대화가 끝날 때 공개됩니다.",
+    randomEvent: "인터랙티브 이벤트",
     finalScore: "최종 점수", comments: "의견", strangest: "가장 이상한 사건", newHigh: "새 로컬 최고 기록", share: "결과 카드 저장／공유", copied: "복사됨", copyReport: "전적 복사", retry: "다시 투고", retrySeed: "같은 Seed 재도전", returnHome: "홈으로",
     rewardTitle: "수정에서 새로운 연구 방향이 열렸습니다", rewardStage: "단계 보상: 유물 하나 선택", rewardCard: "덱 보상: 카드 추가 또는 강화", chooseOne: "하나를 선택하세요. 이후 전략이 달라집니다.", addCard: "덱에 추가", upgradeCard: "카드 강화", gainRelic: "유물 획득", skipReward: "건너뛰고 정신력 2 회복", upgraded: "강화됨", rarityCommon: "일반", rarityUncommon: "고급", rarityRare: "희귀",
     activeEffects: "진행 효과", relics: "유물", noRelics: "유물 없음", caffeine: "카페인", insight: "통찰", technicalDebt: "기술 부채", reviewerFavor: "심사자 호감", pageDebt: "페이지 초과",
@@ -117,7 +117,7 @@ const EXTRA_UI_COPY: Record<ExtraLocale, Partial<Record<UIKey, string>>> = {
     manuscript: "Estado del manuscrito", mentalState: "Salud mental", risk: "Riesgo de retractación", riskTitle: "Al llegar al 100% pierdes la partida", riskLow: "El expediente científico sigue limpio.", riskMid: "Los números mejoran mientras crece la presión de auditoría.", riskHigh: "Riesgo alto: las auditorías y la reproducibilidad serán más difíciles.", endDay: "Terminar día",
     today: "Acciones de hoy", cardHint: "Selecciona una carta y juégala", deck: "Mazo", discard: "Descarte", exhausted: "Agotadas hoy", response: "Respuesta", emptyHand: "No tienes cartas", notEnough: "Recursos insuficientes",
     tutorialTitle: "4 pasos rápidos", tutorial: "Lee el problema → elige una ruta → combina capacidades → completa todos los pasos", closeTutorial: "Cerrar tutorial",
-    randomEvent: "Evento interactivo", eventFootnote: "Debes resolver el evento. El resultado permanece oculto hasta terminar el diálogo.",
+    randomEvent: "Evento interactivo",
     finalScore: "Puntuación final", comments: "Comentarios", strangest: "Evento más extraño", newHigh: "Nuevo récord local", share: "Descargar／compartir resultado", copied: "Copiado", copyReport: "Copiar informe", retry: "Enviar de nuevo", retrySeed: "Reintentar la misma semilla", returnHome: "Volver al inicio",
     rewardTitle: "La revisión abre una nueva dirección", rewardStage: "Recompensa de fase: elige una reliquia", rewardCard: "Recompensa de mazo: añade o mejora una carta", chooseOne: "Elige una. Cambiará el resto de la partida.", addCard: "Añadir al mazo", upgradeCard: "Mejorar carta", gainRelic: "Obtener reliquia", skipReward: "Omitir y recuperar 2 de Salud mental", upgraded: "Mejorada", rarityCommon: "Común", rarityUncommon: "Poco común", rarityRare: "Rara",
     activeEffects: "Efectos activos", relics: "Reliquias", noRelics: "Sin reliquias", caffeine: "Cafeína", insight: "Perspicacia", technicalDebt: "Deuda técnica", reviewerFavor: "Favor del revisor", pageDebt: "Exceso de páginas",
@@ -260,6 +260,10 @@ export function roleText(role: RoleDef, field: "pitch" | "passive" | "weakness",
 
 export function cardRules(card: CardDef, locale: Locale) {
   return locale === "zh" ? card.rules : card.rulesEn ?? CARD_RULES_EN[card.id] ?? card.rules;
+}
+
+export function cardFlavor(card: CardDef, locale: Locale) {
+  return locale === "zh" ? card.flavor : card.flavorEn ?? card.flavor;
 }
 
 export function commentQuote(comment: CommentDef, locale: Locale) {

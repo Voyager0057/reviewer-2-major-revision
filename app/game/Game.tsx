@@ -34,6 +34,7 @@ import {
   isLocale,
   localizedText,
   UI_COPY,
+  cardFlavor,
   cardRules,
   commentNote,
   commentQuote,
@@ -41,6 +42,7 @@ import {
   eventDescription,
   eventTitle,
 } from "./i18n";
+import { eventIllustrationFor } from "./eventIllustrations";
 import { DEFAULT_RUN_SETUP } from "./settings";
 import {
   clearRun,
@@ -757,6 +759,7 @@ export default function Game() {
   const route = getCurrentRoute(game);
   const requirements = getIssueRequirements(game);
   const event = getActiveEvent(game);
+  const eventIllustration = event ? eventIllustrationFor(event) : null;
   const eventChoice = event && game.eventFlow?.choiceId
     ? event.choices.find((choice) => choice.id === game.eventFlow?.choiceId)
     : null;
@@ -1169,6 +1172,7 @@ export default function Game() {
                   {preview.comboActive && <i className="combo-chip">↻ {c.combo}</i>}
                 </span>
                 <span className="card-rules">{cardRules(card, locale)}</span>
+                <span className="card-flavor">{cardFlavor(card, locale)}</span>
                 <span className="card-deltas">{cardDeltaSummary(card, locale)}</span>
                 {preview.matchedTags && preview.matchedTags.length > 0 && (
                   <span className="tag-match-row">{preview.matchedTags.slice(0, 2).map((tag) => <i key={tag}>✓ {locale === "zh" ? CAPABILITY_META[tag].label : CAPABILITY_META[tag].labelEn}</i>)}</span>
@@ -1267,24 +1271,21 @@ export default function Game() {
             </div>
             <h2 id="event-title">{eventTitle(event, locale)}</h2>
             {game.eventFlow?.status === "choice" && <>
+              {eventIllustration && <figure className={`event-illustration theme-${eventIllustration.theme}`}>
+                <img src={eventIllustration.src} alt={locale === "zh" ? `${eventTitle(event, locale)}的场景插图` : `Scene from ${eventTitle(event, locale)}`} />
+              </figure>}
               <p className="event-opening-copy">{eventDescription(event, locale)}</p>
-              <p className="event-scene-setting">{locale === "zh"
-                ? `截止日期没有因为这场意外暂停。消息抵达后，实验室里先是安静了几秒，随后所有人同时开始说话。你必须先选定方向；之后，现场还会要求你做出两次更具体的决定。`
-                : `The deadline does not pause for this interruption. The room goes quiet for several seconds, then everyone speaks at once. Choose a direction first; the scene will demand two more concrete decisions before it releases you.`}</p>
-              <div className="sealed-outcome-note"><span>CONFIDENTIAL</span>{locale === "zh" ? "收益与代价已封存；事件结束后统一揭晓。" : "Costs and rewards are sealed until the scene concludes."}</div>
               <div className="event-choices hidden-outcomes">
                 {event.choices.map((choice) => {
                   const playable = canChooseEvent(game, choice);
                   return (
                     <button type="button" key={choice.id} disabled={!playable} onClick={() => dispatch({ type: "CHOOSE_EVENT", eventId: event.id, choiceId: choice.id })}>
                       <strong>{eventChoiceText(event, choice, "label", locale)}</strong>
-                      <span>{locale === "zh" ? "选择后进入事件对话 · 后果未知" : "Continue into the scene · outcome unknown"}</span>
                       {!playable && <small>{c.notEnough}</small>}
                     </button>
                   );
                 })}
               </div>
-              <small className="event-footnote">{c.eventFootnote}</small>
             </>}
             {game.eventFlow?.status === "decision" && eventChoice && eventDecisionRound && <div className="event-decision-panel" key={`${event.id}:decision:${game.eventFlow.decisionIndex}`}>
               <div className="story-progress" aria-label={locale === "zh" ? "事件进度" : "Story progress"}>
@@ -1296,10 +1297,8 @@ export default function Game() {
               <div className="event-decision-options">
                 {eventDecisionRound.options.map((option) => <button type="button" key={option.id} onClick={() => dispatch({ type: "CHOOSE_EVENT_DECISION", optionId: option.id })}>
                   <strong>{locale === "zh" ? option.label : option.labelEn}</strong>
-                  <span>{locale === "zh" ? "继续这个故事 · 后果仍然未知" : "Continue this story · outcome remains hidden"}</span>
                 </button>)}
               </div>
-              <small className="event-footnote">{locale === "zh" ? `场景决策 ${(game.eventFlow.decisionIndex ?? 0) + 1} / 2` : `Scene decision ${(game.eventFlow.decisionIndex ?? 0) + 1} / 2`}</small>
             </div>}
             {game.eventFlow?.status === "dialogue" && eventChoice && eventBeat && <div className="event-dialogue-panel" key={`${event.id}:${game.eventFlow.beatIndex}`}>
               <div className="story-progress">{[0, 1, ...eventDialogue.map((_beat, index) => index + 2)].map((step) => <i className={step <= (game.eventFlow?.beatIndex ?? 0) + 2 ? "is-read" : ""} key={step} />)}</div>
@@ -1307,7 +1306,7 @@ export default function Game() {
               <blockquote>{locale === "zh" ? eventBeat.text : eventBeat.textEn ?? eventBeat.text}</blockquote>
               {(eventBeat.aside || eventBeat.asideEn) && <p>{locale === "zh" ? eventBeat.aside : eventBeat.asideEn ?? eventBeat.aside}</p>}
               <button type="button" className="primary-button dialogue-next" onClick={() => dispatch({ type: "ADVANCE_EVENT" })}>
-                {game.eventFlow.beatIndex < eventDialogue.length - 1 ? (locale === "zh" ? "继续对话" : "Continue scene") : (locale === "zh" ? "拆开结果信封" : "Open the outcome envelope")} <span>→</span>
+                {game.eventFlow.beatIndex < eventDialogue.length - 1 ? (locale === "zh" ? "听下去" : "Listen") : (locale === "zh" ? "看看后来发生了什么" : "See what happened next")} <span>→</span>
               </button>
             </div>}
             {game.eventFlow?.status === "reveal" && eventChoice && <div className="event-reveal-panel">

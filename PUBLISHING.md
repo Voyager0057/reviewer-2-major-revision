@@ -53,13 +53,13 @@ pnpm exec tsc --noEmit
 
 只要这些检查通过，GitHub Pages 与离线 HTML 使用的就是同一套游戏代码和内容。
 
-## 发布 Multilingual Update
+## 发布 Decision Letter Update
 
 本次版本已经同时更新源码、英文优先的玩家 README、GitHub Pages 构建入口和单文件离线版。检查通过后，你只需要：
 
 ```bash
-git add app offline tests package.json README.md PUBLISHING.md Reviewer-2-Major-Revision.html
-git commit -m "Make English default and add multilingual UI"
+git add app offline tests package.json README.md PUBLISHING.md Reviewer-2-Major-Revision.html images.d.ts
+git commit -m "Add illustrated interactive story events"
 git pull --rebase origin main
 git push origin main
 ```

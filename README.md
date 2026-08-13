@@ -41,9 +41,9 @@ Each day asks uncomfortable questions:
 
 ## The Decision Letter Update
 
-- **528 action cards** covering experiments, statistics, writing, reproducibility, collaboration, and questionable shortcuts
+- **528 action cards** covering experiments, statistics, writing, reproducibility, collaboration, and questionable shortcuts, each with a short research-life vignette
 - **160 reviewer comments** with three response routes and explicit capability requirements
-- **256 interactive story events** across infrastructure, clusters, advisors, coauthors, data, ethics, funding, open science, competition, and submission systems
+- **256 illustrated interactive story events** across infrastructure, clusters, advisors, coauthors, data, ethics, funding, open science, competition, and submission systems
 - **20 manuscript archetypes**, each with a different starting deck, passive ability, and reviewer weakness
 - **48 research relics** and **40 revision tasks**
 - **16 endings**, including Best Paper, Open Science Hero, Replication Legend, Clean Review, speedrun, last-minute upload, Minor Revision, Major Revision, R&R, rejection, burnout, and retraction
@@ -55,7 +55,7 @@ Each day asks uncomfortable questions:
 2. **Read the review.** Every comment offers Full Verification, Narrow the Claim, and Transparent Response routes.
 3. **Match capabilities.** Cards advance only the route steps they actually support: baseline comparison, statistics, data integrity, external validation, calibration, documentation, claim framing, and more.
 4. **Build the deck.** Resolve comments to draft new cards, upgrade actions, and earn relics that alter the rules of the run.
-5. **Live with the consequences.** Story-event rewards and costs remain sealed while you choose an approach, make two follow-up decisions inside the scene, play through the resulting dialogue, and finally open the outcome envelope.
+5. **Live through the scene.** Choose an approach, make two more decisions as the situation develops, and discover the consequences through character dialogue and the scene's conclusion.
 6. **Read the submission timeline.** Important reviews, rewards, events, stage transitions, and editorial decisions are recorded separately from the short action log.
 
 ## Campaign setup
@@ -85,7 +85,7 @@ Ironman keeps a crash-safe autosave but disables manual saving and rollback. It 
 
 ## Interactive events
 
-Events are short academic-comedy stories rather than immediate stat popups:
+Events are illustrated academic-comedy stories rather than immediate stat popups. Related crises share a coherent visual world—laboratory infrastructure, advisors and collaborators, data investigations, or submission bureaucracy—while the writing and choices make each encounter distinct:
 
 1. A lab outage, maintenance window, advisor interruption, data shift, coauthor crisis, or equally plausible disaster occurs.
 2. You see the choices, but not their numerical rewards or costs.
@@ -132,7 +132,7 @@ Your language preference is stored locally in the browser.
 
 你需要在截止日期前管理 GPU、经费、专注、精神状态和撤稿风险，并处理与卡牌能力直接关联的审稿意见。每条意见提供三条解决路线；只有真正匹配所需能力的卡牌才能推进对应步骤。
 
-事件选择不会提前显示收益。你会先选择总体处理方向，再在故事中连续做出两次情境决策；人物对话和现场反应会随路径展开，最后才显示经过遗物保护、三次选择和数值上限修正后的真实结算，并把完整路径写入投稿时间线。
+事件会用实验室故障、导师与合作者、数据调查、投稿行政四组论文风插图建立场景。你先决定怎么处理，再随着人物对话和现场变化连续做出两次更具体的选择；故事结尾才自然显露后果，并把完整经历写进投稿时间线。每张手牌也新增了一句双语科研生活小故事。
 
 游戏包含 528 张行动卡、160 条审稿意见、256 个互动故事事件、20 种论文类型、48 件遗物、5 档难度、6 种周期和 16 种结局。支持自动存档、三个手动存档槽、铁人模式、本地最高分和单文件离线游玩。
 

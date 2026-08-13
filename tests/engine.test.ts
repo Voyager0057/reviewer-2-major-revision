@@ -25,6 +25,7 @@ import {
   DEFAULT_LOCALE,
   LANGUAGE_OPTIONS,
   UI_COPY,
+  cardFlavor,
   cardRules,
   commentNote,
   commentQuote,
@@ -239,6 +240,8 @@ test("expanded content is large, unique, linked, and fully bilingual", () => {
     assert.ok(!containsHan(roleText(role, "weakness", "en")));
   }
   for (const card of CARDS) {
+    assert.ok(cardFlavor(card, "en").length > 0, `${card.id} needs English scene flavor`);
+    assert.ok(!containsHan(cardFlavor(card, "en")), `${card.id} English scene flavor`);
     assert.ok(!containsHan(cardRules(card, "en")), card.id);
     assert.ok(card.provides && Object.values(card.provides).some((value) => (value ?? 0) > 0), `${card.id} needs structured capabilities`);
   }

@@ -1314,19 +1314,19 @@ export function getEventDialogue(choice: EventChoice, event?: EventDef, decision
       speaker: "你", speakerEn: "You",
       text: `你把“${choice.label}”变成第一项行动。没有人欢呼；有人关掉了无关窗口，有人把剩余时间写在白板右上角。${firstDecision?.response ?? "现场终于从争论进入执行。"}`,
       textEn: `You turn “${labelEn}” into the first action. Nobody cheers. Someone closes unrelated windows; someone writes the remaining time in the corner. ${firstDecision?.responseEn ?? "The room finally moves from argument to execution."}`,
-      aside: `${titleZh}仍在继续，结果还没有资格被总结。`, asideEn: `${titleEn} is still unfolding; the outcome has not earned a summary yet.`,
+      aside: `屏幕角落的时钟还在走，${titleZh}里的每个人都开始做一件具体的事。`, asideEn: `The clock keeps moving while everyone caught in ${titleEn} finally begins one concrete task.`,
     },
     {
       speaker: "事件现场", speakerEn: "At the Scene",
       text: `${secondDecision?.response ?? "第二个决定落下后，现场安静了一会儿。"} 时间过去了一小段，足够让一个假设露出裂缝，也足够让一项原本含糊的责任找到名字。`,
       textEn: `${secondDecision?.responseEn ?? "After the second decision, the scene goes quiet for a moment."} Enough time passes for one assumption to crack and one vague responsibility to acquire a name.`,
-      aside: "最后的数字仍封在信封里，但故事已经留下可以追溯的痕迹。", asideEn: "The final numbers remain sealed, but the story now leaves an auditable trail.",
+      aside: "白板上多了两个人名、一个时间点，以及一句以后不能假装没看见的话。", asideEn: "The whiteboard now holds two names, a timestamp, and one sentence nobody can pretend not to have seen.",
     },
     {
       speaker: "旁白", speakerEn: "Narrator",
       text: `${titleZh}没有像电影那样结束。没有掌声，也没有突然恢复的服务器；只有一份新记录、几条被删掉的草率结论，以及终于可以继续推进的论文。`,
       textEn: `${titleEn} does not end like a film. There is no applause and no magically restored server—only a new record, several deleted hasty claims, and a paper that can finally move again.`,
-      aside: "现在可以拆开结果信封。", asideEn: "The outcome envelope can now be opened.",
+      aside: "你合上电脑前又看了一眼房间；明天的问题还在，但已经不是今晚的那个问题。", asideEn: "Before closing the laptop, you look around once more. Tomorrow still has a problem, but it is no longer tonight's problem.",
     },
   ];
   if (source.length === 0) return fallback;
@@ -1354,8 +1354,8 @@ function selectEventChoice(state: GameState, eventId: string, choiceId: string):
   };
   return addLog(
     { ...state, eventFlow: { eventId, choiceId, beatIndex: 0, status: "decision", decisionIndex: 0, decisionIds: [], before } },
-    `${event.title}：你选择了「${choice.label}」，结果尚未揭晓。`,
-    `${eventTitle(event, "en")}: you choose “${eventChoiceText(event, choice, "label", "en")}.” Outcome pending.`,
+    `${event.title}：你把「${choice.label}」写进白板第一行，房间里终于有人开始行动。`,
+    `${eventTitle(event, "en")}: you write “${eventChoiceText(event, choice, "label", "en")}” on the first line of the whiteboard, and the room finally moves.`,
     "neutral",
   );
 }
@@ -1379,8 +1379,8 @@ function selectEventDecision(state: GameState, optionId: string): GameState {
         ? { ...flow, decisionIndex: 1, decisionIds }
         : { ...flow, status: "dialogue", decisionIndex: 2, decisionIds, beatIndex: 0 },
     },
-    `${event.title}：现场决定「${option.label}」。结算仍未揭晓。`,
-    `${eventTitle(event, "en")}: the scene chooses “${option.labelEn}.” Resolution remains sealed.`,
+    `${event.title}：现场决定「${option.label}」。有人点头，有人打开日志，下一步开始了。`,
+    `${eventTitle(event, "en")}: the room chooses “${option.labelEn}.” Someone nods, someone opens the logs, and the next step begins.`,
     "neutral",
   );
 }
