@@ -26,6 +26,7 @@ import type {
   ConditionState,
   Delta,
   EventChoice,
+  EventDecisionRound,
   EventDef,
   GameAction,
   GameState,
@@ -1182,17 +1183,160 @@ function applyEventEffect(state: GameState, choice: EventChoice) {
   return next;
 }
 
-export function getEventDialogue(choice: EventChoice, event?: EventDef) {
-  if (choice.story && choice.story.length > 0) return choice.story.slice(0, 3);
+function eventStoryVariant(eventId: string) {
+  return [...eventId].reduce((value, character) => (value * 31 + character.charCodeAt(0)) >>> 0, 17) % 4;
+}
+
+export function getEventDecisionRound(event: EventDef, choice: EventChoice, roundIndex: number, decisionIds: string[] = []): EventDecisionRound {
+  const variant = eventStoryVariant(event.id);
+  const eventZh = eventTitle(event, "zh");
+  const eventEn = eventTitle(event, "en");
+  const actionZh = eventChoiceText(event, choice, "label", "zh");
+  const actionEn = eventChoiceText(event, choice, "label", "en");
+
+  const firstRounds: EventDecisionRound[] = [
+    {
+      id: "room", speaker: "项目群聊", speakerEn: "Project Chat",
+      narrative: `${eventDescription(event, "zh")} 你提出“${actionZh}”后，群聊里的“正在输入”亮了又灭。终于有人问：如果今晚只能救下一件东西，究竟救实验、记录，还是救人？`,
+      narrativeEn: `${eventDescription(event, "en")} After you propose “${actionEn},” the typing indicator appears, vanishes, and returns. Someone finally asks: if only one thing survives tonight, is it the experiment, the record, or the researcher?`,
+      prompt: "你怎么把这场混乱变成一个共同决定？", promptEn: "How do you turn the confusion into a shared decision?",
+      options: [
+        { id: "room-owners", label: "让每个人说出最担心失去的东西", labelEn: "Ask what everyone is most afraid to lose", response: "答案彼此冲突，却第一次把真正的风险摆在了同一张桌上。", responseEn: "The answers conflict, but the real risks finally occupy the same table.", delta: { mental: -1, stats: { clarity: 1, reproducibility: 1 }, risk: -1 } },
+        { id: "room-command", label: "直接分配任务，先让现场动起来", labelEn: "Assign tasks and get the room moving", response: "所有人立刻有了动词，至于这些动词是否指向同一个目标，暂时没人追问。", responseEn: "Everyone immediately gets a verb. Whether those verbs share a destination remains unasked.", delta: { mental: 1, days: 1, risk: 2 } },
+      ],
+    },
+    {
+      id: "thread", speaker: "邮件线程（17 封未读）", speakerEn: "Email Thread (17 unread)",
+      narrative: `${eventDescription(event, "zh")} 你写下“${actionZh}”，抄送列表随即多了四个人。每个人都引用了不同版本的附件，并礼貌地认为自己看到的是最终版。`,
+      narrativeEn: `${eventDescription(event, "en")} You write “${actionEn},” and four more people join CC. Each quotes a different attachment and politely assumes theirs is final.`,
+      prompt: "下一封邮件要公开到什么程度？", promptEn: "How much should the next message reveal?",
+      options: [
+        { id: "thread-all", label: "Reply All：把失败事实与版本号写清楚", labelEn: "Reply All with failures and version numbers", response: "线程短暂安静，因为所有人终于在讨论同一份文件。", responseEn: "The thread falls briefly silent because everyone is finally discussing the same file.", delta: { mental: -1, stats: { reproducibility: 1 }, risk: -2 } },
+        { id: "thread-call", label: "拉核心人员开一个十分钟小会", labelEn: "Move the core people into a ten-minute call", response: "十分钟变成二十七分钟，但至少没有产生第十八封互相矛盾的邮件。", responseEn: "Ten minutes become twenty-seven, but no eighteenth contradictory email is born.", delta: { mental: -1, stats: { clarity: 1 }, risk: 1 } },
+      ],
+    },
+    {
+      id: "advisor", speaker: "导师", speakerEn: "Advisor",
+      narrative: `${eventDescription(event, "zh")} 你解释准备“${actionZh}”。导师没有立刻反对，只把眼镜推高一点，说：“可以。但什么结果会让你承认这条路不通？”`,
+      narrativeEn: `${eventDescription(event, "en")} You explain that you plan to “${actionEn}.” Your advisor does not object, only adjusts their glasses: “Fine. What result would make you admit this path is not working?”`,
+      prompt: "你如何回答这个危险但合理的问题？", promptEn: "How do you answer the dangerous but reasonable question?",
+      options: [
+        { id: "advisor-criterion", label: "当场写下停止标准和判断依据", labelEn: "Write the stopping rule and decision criterion", response: "白板上多了一条未来的你无法轻易改写的边界。", responseEn: "The whiteboard gains a boundary that future-you cannot quietly rewrite.", delta: { stats: { evidence: 1, reproducibility: 1 }, risk: -1 } },
+        { id: "advisor-promise", label: "保证今晚一定拿出一个结果", labelEn: "Promise a result before tonight ends", response: "导师点头，截止日期仿佛因此又向前走了半步。", responseEn: "Your advisor nods, and the deadline seems to take half a step closer.", delta: { mental: -2, days: 1, risk: 2 } },
+      ],
+    },
+    {
+      id: "evidence", speaker: "现场记录", speakerEn: "Incident Log",
+      narrative: `${eventDescription(event, "zh")} 你决定“${actionZh}”。屏幕上仍有窗口在刷新，日志仍在增长；每多等一分钟，证据更多，现场也更难复原。`,
+      narrativeEn: `${eventDescription(event, "en")} You decide to “${actionEn}.” Windows keep refreshing and logs keep growing; every extra minute creates more evidence and makes the scene harder to reconstruct.`,
+      prompt: "现在先固定证据，还是边处理边观察？", promptEn: "Do you freeze the evidence now or keep observing while acting?",
+      options: [
+        { id: "evidence-freeze", label: "冻结日志、环境和当前版本", labelEn: "Freeze logs, environment, and current revision", response: "时间戳终于排成一条能解释的线，虽然修复因此慢了一点。", responseEn: "The timestamps finally form an explainable line, though the repair slows down.", delta: { gpu: -1, stats: { reproducibility: 1 }, risk: -2 } },
+        { id: "evidence-live", label: "保持系统运行，边修边收集线索", labelEn: "Keep the system live and collect clues while repairing", response: "你多拿到一个结果，也多制造了两个需要解释的变量。", responseEn: "You gain one more result and create two more variables that need explaining.", delta: { stats: { evidence: 1 }, mental: -1, risk: 2 } },
+      ],
+    },
+  ];
+
+  if (roundIndex <= 0) return firstRounds[variant];
+  const first = firstRounds[variant];
+  const previous = first.options.find((option) => option.id === decisionIds[0]) ?? first.options[0];
+  const secondRounds: EventDecisionRound[] = [
+    {
+      id: "room-close", speaker: "负责记录的同门", speakerEn: "Labmate Taking Notes",
+      narrative: `${previous.response} 五分钟后，${eventZh}仍未结束，但大家已经围绕“${actionZh}”列出三项动作。负责记录的人抬头问：哪一项要进入正式事故记录？`,
+      narrativeEn: `${previous.responseEn} Five minutes later, ${eventEn} is not over, but the team has three actions around “${actionEn}.” The note-taker asks which one belongs in the official incident record.`,
+      prompt: "最后一步，你留下什么样的记录？", promptEn: "For the final step, what kind of record do you leave?",
+      options: [
+        { id: "room-close-ledger", label: "记下负责人、时间点和失败条件", labelEn: "Record owner, timestamp, and failure condition", response: "这份记录不漂亮，但明天任何人都能从这里接手。", responseEn: "The record is not elegant, but anyone can resume from it tomorrow.", delta: { mental: -1, stats: { clarity: 1, reproducibility: 1 }, risk: -1 } },
+        { id: "room-close-motion", label: "只保留行动清单，先抢回时间", labelEn: "Keep only the action list and recover time", response: "行动开始得更快，原因与责任则留给未来的会议。", responseEn: "Action begins faster; causes and ownership are deferred to a future meeting.", delta: { days: 1, mental: 1, risk: 2 } },
+      ],
+    },
+    {
+      id: "thread-close", speaker: "合作者", speakerEn: "Coauthor",
+      narrative: `${previous.response} 当${eventZh}的讨论终于收束到“${actionZh}”，合作者发来一句：“我同意，但我们是不是应该把证据也放进去？”附件图标在发送按钮旁边闪着。`,
+      narrativeEn: `${previous.responseEn} As discussion of ${eventEn} finally converges on “${actionEn},” a coauthor writes: “Agreed, but should the evidence travel with it?” The attachment icon waits beside Send.`,
+      prompt: "你如何结束这条线程？", promptEn: "How do you close the thread?",
+      options: [
+        { id: "thread-close-attach", label: "附上日志片段与一段限制说明", labelEn: "Attach the log excerpt and a limitations note", response: "邮件长了一屏，但再也没人问“这个数字从哪来”。", responseEn: "The message grows by a screen, but nobody asks where the number came from.", delta: { mental: -1, stats: { evidence: 1, reproducibility: 1 }, risk: -1 } },
+        { id: "thread-close-summary", label: "只发三行结论，结束邮件风暴", labelEn: "Send three lines of conclusions and end the storm", response: "收件箱恢复安静；被删掉的上下文则进入下一轮审稿。", responseEn: "The inbox quiets; the omitted context moves into the next review round.", delta: { mental: 2, stats: { clarity: 1 }, risk: 2 } },
+      ],
+    },
+    {
+      id: "advisor-close", speaker: "你", speakerEn: "You",
+      narrative: `${previous.response} 围绕${eventZh}的讨论走到最后，导师把“${actionZh}”圈起来：“那就说清楚，失败时我们报告什么，而不是藏什么。”`,
+      narrativeEn: `${previous.responseEn} As the discussion of ${eventEn} closes, your advisor circles “${actionEn}”: “Then state what we report when it fails—not what we hide.”`,
+      prompt: "你把哪句话写进研究记录？", promptEn: "Which sentence enters the research record?",
+      options: [
+        { id: "advisor-close-limit", label: "写下最坏结果以及它会否定什么", labelEn: "Write the worst result and what it would refute", response: "失败第一次从威胁变成了可以解释的研究结果。", responseEn: "Failure changes from a threat into an interpretable research result.", delta: { stats: { evidence: 1, reproducibility: 1 }, risk: -2 } },
+        { id: "advisor-close-win", label: "先写预期成功版本，争取一点士气", labelEn: "Draft the success version first to protect morale", response: "段落读起来很鼓舞人心，前提部分却安静地缩小了字号。", responseEn: "The paragraph is inspiring; the assumptions quietly shrink their font size.", delta: { mental: 2, stats: { novelty: 1 }, risk: 3 } },
+      ],
+    },
+    {
+      id: "evidence-close", speaker: "系统终端", speakerEn: "System Terminal",
+      narrative: `${previous.response} ${eventZh}留下的最后一行日志停在光标上方。围绕“${actionZh}”的处理已经可以继续，但系统问你是否保存本次状态快照。`,
+      narrativeEn: `${previous.responseEn} The final line left by ${eventEn} sits above the cursor. Work on “${actionEn}” can continue, but the system asks whether to preserve a snapshot.`,
+      prompt: "你按下哪个键？", promptEn: "Which key do you press?",
+      options: [
+        { id: "evidence-close-snapshot", label: "保存快照并写一行复现命令", labelEn: "Save a snapshot and one reproduction command", response: "硬盘少了一点空间，未来少了一场侦探小说。", responseEn: "The disk loses some space; the future loses a detective story.", delta: { gpu: -1, stats: { reproducibility: 2 }, risk: -1 } },
+        { id: "evidence-close-skip", label: "跳过快照，让队列立刻继续", labelEn: "Skip the snapshot and resume the queue now", response: "进度条重新移动；今晚发生过什么，只剩几个人的记忆。", responseEn: "The progress bar moves again; what happened tonight survives in a few memories.", delta: { days: 1, stats: { evidence: 1 }, risk: 3 } },
+      ],
+    },
+  ];
+  return secondRounds[variant];
+}
+
+function mergeEventDeltas(...deltas: Delta[]): Delta {
+  const merged: Delta = { stats: {} };
+  for (const delta of deltas) {
+    for (const metric of METRICS) {
+      const value = delta.stats?.[metric] ?? 0;
+      if (value) merged.stats![metric] = (merged.stats![metric] ?? 0) + value;
+    }
+    for (const key of ["gpu", "funding", "mental", "risk", "days", "focus"] as const) {
+      const value = delta[key] ?? 0;
+      if (value) merged[key] = (merged[key] ?? 0) + value;
+    }
+  }
+  return merged;
+}
+
+export function getEventDialogue(choice: EventChoice, event?: EventDef, decisionIds: string[] = []) {
+  const source = choice.story && choice.story.length > 0 ? choice.story.slice(0, 3) : [];
   const labelEn = event ? eventChoiceText(event, choice, "label", "en") : choice.labelEn ?? choice.label;
-  return [{
-    speaker: "你",
-    speakerEn: "You",
-    text: `“${choice.label}。”你按下发送。对话框里出现三个点，停了很久，又消失了。`,
-    textEn: `“${labelEn}.” You press Send. Three dots appear, linger, and disappear.`,
-    aside: "选择已经作出，收益与代价将在故事结束后揭晓。",
-    asideEn: "The choice is locked. Its costs and rewards will be revealed after the scene.",
-  }];
+  const titleZh = event ? eventTitle(event, "zh") : "这场事件";
+  const titleEn = event ? eventTitle(event, "en") : "the incident";
+  const firstRound = event ? getEventDecisionRound(event, choice, 0, []) : null;
+  const secondRound = event ? getEventDecisionRound(event, choice, 1, decisionIds) : null;
+  const firstDecision = firstRound?.options.find((option) => option.id === decisionIds[0]);
+  const secondDecision = secondRound?.options.find((option) => option.id === decisionIds[1]);
+  const fallback = [
+    {
+      speaker: "你", speakerEn: "You",
+      text: `你把“${choice.label}”变成第一项行动。没有人欢呼；有人关掉了无关窗口，有人把剩余时间写在白板右上角。${firstDecision?.response ?? "现场终于从争论进入执行。"}`,
+      textEn: `You turn “${labelEn}” into the first action. Nobody cheers. Someone closes unrelated windows; someone writes the remaining time in the corner. ${firstDecision?.responseEn ?? "The room finally moves from argument to execution."}`,
+      aside: `${titleZh}仍在继续，结果还没有资格被总结。`, asideEn: `${titleEn} is still unfolding; the outcome has not earned a summary yet.`,
+    },
+    {
+      speaker: "事件现场", speakerEn: "At the Scene",
+      text: `${secondDecision?.response ?? "第二个决定落下后，现场安静了一会儿。"} 时间过去了一小段，足够让一个假设露出裂缝，也足够让一项原本含糊的责任找到名字。`,
+      textEn: `${secondDecision?.responseEn ?? "After the second decision, the scene goes quiet for a moment."} Enough time passes for one assumption to crack and one vague responsibility to acquire a name.`,
+      aside: "最后的数字仍封在信封里，但故事已经留下可以追溯的痕迹。", asideEn: "The final numbers remain sealed, but the story now leaves an auditable trail.",
+    },
+    {
+      speaker: "旁白", speakerEn: "Narrator",
+      text: `${titleZh}没有像电影那样结束。没有掌声，也没有突然恢复的服务器；只有一份新记录、几条被删掉的草率结论，以及终于可以继续推进的论文。`,
+      textEn: `${titleEn} does not end like a film. There is no applause and no magically restored server—only a new record, several deleted hasty claims, and a paper that can finally move again.`,
+      aside: "现在可以拆开结果信封。", asideEn: "The outcome envelope can now be opened.",
+    },
+  ];
+  if (source.length === 0) return fallback;
+  return source.map((beat, index) => ({
+    ...beat,
+    text: `${beat.text} ${fallback[index]?.text ?? ""}`,
+    textEn: `${beat.textEn ?? beat.text} ${fallback[index]?.textEn ?? ""}`,
+    aside: beat.aside ?? fallback[index]?.aside,
+    asideEn: beat.asideEn ?? fallback[index]?.asideEn,
+  }));
 }
 
 function selectEventChoice(state: GameState, eventId: string, choiceId: string): GameState {
@@ -1209,9 +1353,34 @@ function selectEventChoice(state: GameState, eventId: string, choiceId: string):
     relics: [...state.relics],
   };
   return addLog(
-    { ...state, eventFlow: { eventId, choiceId, beatIndex: 0, status: "dialogue", before } },
+    { ...state, eventFlow: { eventId, choiceId, beatIndex: 0, status: "decision", decisionIndex: 0, decisionIds: [], before } },
     `${event.title}：你选择了「${choice.label}」，结果尚未揭晓。`,
     `${eventTitle(event, "en")}: you choose “${eventChoiceText(event, choice, "label", "en")}.” Outcome pending.`,
+    "neutral",
+  );
+}
+
+function selectEventDecision(state: GameState, optionId: string): GameState {
+  const flow = state.eventFlow;
+  if (state.phase !== "event" || !flow || flow.status !== "decision" || !flow.choiceId || state.ending) return state;
+  const event = EVENT_BY_ID[flow.eventId];
+  const choice = event?.choices.find((item) => item.id === flow.choiceId);
+  if (!event || !choice) return state;
+  const decisionIndex = Math.min(1, Math.max(0, flow.decisionIndex ?? 0));
+  const previousIds = flow.decisionIds ?? [];
+  const round = getEventDecisionRound(event, choice, decisionIndex, previousIds);
+  const option = round.options.find((item) => item.id === optionId);
+  if (!option || previousIds.length !== decisionIndex) return state;
+  const decisionIds = [...previousIds, option.id];
+  return addLog(
+    {
+      ...state,
+      eventFlow: decisionIndex === 0
+        ? { ...flow, decisionIndex: 1, decisionIds }
+        : { ...flow, status: "dialogue", decisionIndex: 2, decisionIds, beatIndex: 0 },
+    },
+    `${event.title}：现场决定「${option.label}」。结算仍未揭晓。`,
+    `${eventTitle(event, "en")}: the scene chooses “${option.labelEn}.” Resolution remains sealed.`,
     "neutral",
   );
 }
@@ -1222,11 +1391,16 @@ function advanceEvent(state: GameState): GameState {
   const event = EVENT_BY_ID[flow.eventId];
   const choice = event?.choices.find((item) => item.id === flow.choiceId);
   if (!event || !choice) return state;
-  const dialogue = getEventDialogue(choice, event);
+  const decisionIds = flow.decisionIds ?? [];
+  const dialogue = getEventDialogue(choice, event, decisionIds);
   if (flow.beatIndex < dialogue.length - 1) {
     return { ...state, eventFlow: { ...flow, beatIndex: flow.beatIndex + 1 } };
   }
-  let delta = choice.delta;
+  const decisionDeltas = [0, 1].map((index) => {
+    const round = getEventDecisionRound(event, choice, index, decisionIds);
+    return round.options.find((option) => option.id === decisionIds[index])?.delta ?? {};
+  });
+  let delta = mergeEventDeltas(choice.delta, ...decisionDeltas);
   const shield = state.relics.reduce((sum, relicId) => sum + (RELIC_BY_ID[relicId]?.effect?.eventShield ?? 0), 0);
   if (state.relics.includes("backup-drive") && (delta.stats?.reproducibility ?? 0) < 0) {
     delta = { ...delta, stats: { ...delta.stats, reproducibility: Math.min(0, (delta.stats?.reproducibility ?? 0) + 2) } };
@@ -1240,7 +1414,13 @@ function advanceEvent(state: GameState): GameState {
     delta = protectedDelta;
   }
   let next = applyEventEffect(applyDelta(state, delta), choice);
-  next = addLog(next, `${event.title}：${choice.result}`, `${eventTitle(event, "en")}: ${eventChoiceText(event, choice, "result", "en")}`, "neutral");
+  const chosenRounds = [0, 1].map((index) => {
+    const round = getEventDecisionRound(event, choice, index, decisionIds);
+    return round.options.find((option) => option.id === decisionIds[index]);
+  }).filter((option): option is NonNullable<typeof option> => Boolean(option));
+  const resultZh = `${choice.result}${chosenRounds.length ? ` 你在现场先后选择了：${chosenRounds.map((option) => option.label).join("；")}。` : ""}`;
+  const resultEn = `${eventChoiceText(event, choice, "result", "en")}${chosenRounds.length ? ` Your scene decisions were: ${chosenRounds.map((option) => option.labelEn).join("; ")}.` : ""}`;
+  next = addLog(next, `${event.title}：${resultZh}`, `${eventTitle(event, "en")}: ${resultEn}`, "neutral");
   next = {
     ...next,
     eventFlow: { ...flow, beatIndex: dialogue.length - 1, status: "reveal" },
@@ -1250,9 +1430,9 @@ function advanceEvent(state: GameState): GameState {
     kind: "event",
     title: `${event.title} · 结案`,
     titleEn: `${eventTitle(event, "en")} · resolved`,
-    detail: choice.result,
-    detailEn: eventChoiceText(event, choice, "result", "en"),
-    tone: (choice.delta.risk ?? 0) >= 10 || (choice.delta.mental ?? 0) <= -4 ? "danger" : (choice.delta.risk ?? 0) < 0 || (choice.delta.mental ?? 0) > 0 ? "good" : "neutral",
+    detail: resultZh,
+    detailEn: resultEn,
+    tone: (delta.risk ?? 0) >= 10 || (delta.mental ?? 0) <= -4 ? "danger" : (delta.risk ?? 0) < 0 || (delta.mental ?? 0) > 0 ? "good" : "neutral",
   });
 }
 
@@ -1375,6 +1555,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     case "PLAY_CARD": return playCard(state, action.instanceId);
     case "END_TURN": return action.expectedTurn === state.turn ? endTurn(state) : state;
     case "CHOOSE_EVENT": return selectEventChoice(state, action.eventId, action.choiceId);
+    case "CHOOSE_EVENT_DECISION": return selectEventDecision(state, action.optionId);
     case "ADVANCE_EVENT": return advanceEvent(state);
     case "COMPLETE_EVENT": return completeEvent(state);
     case "CHOOSE_REWARD": return chooseReward(state, action.offerId);

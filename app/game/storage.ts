@@ -161,9 +161,17 @@ export function normalizeStoredRun(input: unknown): GameState | null {
     (value.phase === "event" && (
       !value.eventFlow ||
       value.eventFlow.eventId !== value.activeEventId ||
-      !["choice", "dialogue", "reveal"].includes(value.eventFlow.status) ||
+      !["choice", "decision", "dialogue", "reveal"].includes(value.eventFlow.status) ||
       !Number.isSafeInteger(value.eventFlow.beatIndex) ||
-      value.eventFlow.beatIndex < 0
+      value.eventFlow.beatIndex < 0 ||
+      (value.eventFlow.status === "decision" && (
+        !Number.isSafeInteger(value.eventFlow.decisionIndex) ||
+        (value.eventFlow.decisionIndex ?? -1) < 0 ||
+        (value.eventFlow.decisionIndex ?? 3) > 1 ||
+        !Array.isArray(value.eventFlow.decisionIds) ||
+        value.eventFlow.decisionIds.length !== value.eventFlow.decisionIndex ||
+        value.eventFlow.decisionIds.some((entry) => typeof entry !== "string")
+      ))
     )) ||
     (value.phase !== "event" && value.eventFlow !== null) ||
     (value.phase === "reward" && value.rewardOffers.length === 0) ||

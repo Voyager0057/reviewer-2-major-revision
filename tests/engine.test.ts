@@ -16,6 +16,7 @@ import {
   getActiveEvent,
   getCardPreview,
   getCampaignConfig,
+  getEventDecisionRound,
   getEventDialogue,
   getIssueRequirements,
   nextRandom,
@@ -162,6 +163,11 @@ function autoplay(seed: number, roleId: string) {
         const choice = event.choices.find((item) => canChooseEvent(state, item));
         assert.ok(choice);
         state = gameReducer(state, { type: "CHOOSE_EVENT", eventId: event.id, choiceId: choice.id });
+      } else if (state.eventFlow?.status === "decision") {
+        const choice = event.choices.find((item) => item.id === state.eventFlow?.choiceId);
+        assert.ok(choice);
+        const round = getEventDecisionRound(event, choice, state.eventFlow.decisionIndex ?? 0, state.eventFlow.decisionIds ?? []);
+        state = gameReducer(state, { type: "CHOOSE_EVENT_DECISION", optionId: round.options[0].id });
       } else if (state.eventFlow?.status === "dialogue") {
         state = gameReducer(state, { type: "ADVANCE_EVENT" });
       } else {
@@ -297,7 +303,7 @@ test("all difficulty and campaign presets create deterministic bounded runs", ()
   assert.equal(custom.campaign.ironman, true);
 });
 
-test("story events lock a choice, play dialogue, and reveal effects only at the end", () => {
+test("story events require three decisions, play dialogue, and reveal effects only at the end", () => {
   const initial = playableRun("method", 8128);
   const event = EVENTS.find((item) => item.choices.some((choice) => choice.story?.length === 3));
   assert.ok(event);
@@ -312,13 +318,20 @@ test("story events lock a choice, play dialogue, and reveal effects only at the 
   assert.ok(choice);
   const before = structuredClone({ stats: state.stats, resources: state.resources, conditions: state.conditions });
   const chosen = gameReducer(state, { type: "CHOOSE_EVENT", eventId: event.id, choiceId: choice.id });
-  assert.equal(chosen.eventFlow?.status, "dialogue");
+  assert.equal(chosen.eventFlow?.status, "decision");
   assert.deepEqual(chosen.eventFlow?.before?.stats, before.stats);
   assert.deepEqual(chosen.eventFlow?.before?.resources, before.resources);
   assert.deepEqual({ stats: chosen.stats, resources: chosen.resources, conditions: chosen.conditions }, before);
   assert.deepEqual(gameReducer(chosen, { type: "CHOOSE_EVENT", eventId: event.id, choiceId: choice.id }), chosen);
 
   let dialogue = chosen;
+  for (let decisionIndex = 0; decisionIndex < 2; decisionIndex += 1) {
+    assert.equal(dialogue.eventFlow?.status, "decision");
+    const round = getEventDecisionRound(event, choice, decisionIndex, dialogue.eventFlow?.decisionIds ?? []);
+    dialogue = gameReducer(dialogue, { type: "CHOOSE_EVENT_DECISION", optionId: round.options[0].id });
+    assert.deepEqual({ stats: dialogue.stats, resources: dialogue.resources, conditions: dialogue.conditions }, before);
+  }
+  assert.equal(dialogue.eventFlow?.status, "dialogue");
   for (let index = 1; index < (choice.story?.length ?? 1); index += 1) {
     dialogue = gameReducer(dialogue, { type: "ADVANCE_EVENT" });
     assert.equal(dialogue.eventFlow?.status, "dialogue");
@@ -349,11 +362,47 @@ test("event outcome snapshots preserve the exact post-relic settlement", () => {
     resources: { ...initial.resources, mental: 11 },
   };
   const chosen = gameReducer(state, { type: "CHOOSE_EVENT", eventId: event.id, choiceId: choice.id });
-  const revealed = gameReducer(chosen, { type: "ADVANCE_EVENT" });
+  let scene = chosen;
+  for (let decisionIndex = 0; decisionIndex < 2; decisionIndex += 1) {
+    const round = getEventDecisionRound(event, choice, decisionIndex, scene.eventFlow?.decisionIds ?? []);
+    scene = gameReducer(scene, { type: "CHOOSE_EVENT_DECISION", optionId: round.options[0].id });
+  }
+  const dialogueLength = getEventDialogue(choice, event, scene.eventFlow?.decisionIds ?? []).length;
+  for (let index = 0; index < dialogueLength; index += 1) scene = gameReducer(scene, { type: "ADVANCE_EVENT" });
+  const revealed = scene;
   assert.equal(revealed.eventFlow?.status, "reveal");
   assert.equal(revealed.eventFlow?.before?.resources.mental, 11);
   assert.equal(revealed.resources.mental, 11);
-  assert.equal(revealed.stats.reproducibility, Math.min(15, state.stats.reproducibility + 2));
+  assert.equal(revealed.stats.reproducibility, Math.min(15, state.stats.reproducibility + 5));
+});
+
+test("mid-scene decisions create different sealed outcomes", () => {
+  const initial = playableRun("method", 4451);
+  const event = EVENTS.find((item) => item.id === "gpu-oom");
+  const choice = event?.choices.find((item) => item.id === "rerun");
+  assert.ok(event && choice);
+  const base: GameState = {
+    ...initial,
+    phase: "event",
+    activeEventId: event.id,
+    eventFlow: { eventId: event.id, choiceId: null, beatIndex: 0, status: "choice" },
+    resources: { ...initial.resources, gpu: 20, mental: 15 },
+  };
+  const resolveWith = (optionIndex: 0 | 1) => {
+    let run = gameReducer(base, { type: "CHOOSE_EVENT", eventId: event.id, choiceId: choice.id });
+    for (let index = 0; index < 2; index += 1) {
+      const round = getEventDecisionRound(event, choice, index, run.eventFlow?.decisionIds ?? []);
+      run = gameReducer(run, { type: "CHOOSE_EVENT_DECISION", optionId: round.options[optionIndex].id });
+    }
+    const dialogueLength = getEventDialogue(choice, event, run.eventFlow?.decisionIds ?? []).length;
+    for (let index = 0; index < dialogueLength; index += 1) run = gameReducer(run, { type: "ADVANCE_EVENT" });
+    return run;
+  };
+  const careful = resolveWith(0);
+  const fast = resolveWith(1);
+  assert.equal(careful.eventFlow?.status, "reveal");
+  assert.equal(fast.eventFlow?.status, "reveal");
+  assert.notDeepEqual({ stats: careful.stats, resources: careful.resources }, { stats: fast.stats, resources: fast.resources });
 });
 
 function completePaper(overrides: Partial<GameState>, setup: RunSetup = { difficultyId: "major", lengthId: "standard", ironman: false }) {

@@ -24,6 +24,7 @@ import {
   getCardPreview,
   getCurrentComment,
   getCurrentRoute,
+  getEventDecisionRound,
   getEventDialogue,
   getIssueRequirements,
 } from "./engine";
@@ -759,8 +760,17 @@ export default function Game() {
   const eventChoice = event && game.eventFlow?.choiceId
     ? event.choices.find((choice) => choice.id === game.eventFlow?.choiceId)
     : null;
-  const eventDialogue = eventChoice ? getEventDialogue(eventChoice, event ?? undefined) : [];
+  const eventDecisionRound = event && eventChoice && game.eventFlow?.status === "decision"
+    ? getEventDecisionRound(event, eventChoice, game.eventFlow.decisionIndex ?? 0, game.eventFlow.decisionIds ?? [])
+    : null;
+  const eventDialogue = eventChoice ? getEventDialogue(eventChoice, event ?? undefined, game.eventFlow?.decisionIds ?? []) : [];
   const eventBeat = eventDialogue[Math.min(game.eventFlow?.beatIndex ?? 0, Math.max(0, eventDialogue.length - 1))];
+  const eventDecisionTrail = event && eventChoice
+    ? (game.eventFlow?.decisionIds ?? []).map((optionId, index) => {
+      const round = getEventDecisionRound(event, eventChoice, index, game.eventFlow?.decisionIds ?? []);
+      return round.options.find((option) => option.id === optionId);
+    }).filter((option): option is NonNullable<typeof option> => Boolean(option))
+    : [];
   const selectedInstance = game.hand.find((card) => card.instanceId === activeSelectedCard);
   const selectedDefinition = selectedInstance ? CARD_BY_ID[selectedInstance.cardId] : null;
   const progressPercent = Math.min(100, (game.issue.progress / game.issue.difficulty) * 100);
@@ -1258,6 +1268,9 @@ export default function Game() {
             <h2 id="event-title">{eventTitle(event, locale)}</h2>
             {game.eventFlow?.status === "choice" && <>
               <p className="event-opening-copy">{eventDescription(event, locale)}</p>
+              <p className="event-scene-setting">{locale === "zh"
+                ? `截止日期没有因为这场意外暂停。消息抵达后，实验室里先是安静了几秒，随后所有人同时开始说话。你必须先选定方向；之后，现场还会要求你做出两次更具体的决定。`
+                : `The deadline does not pause for this interruption. The room goes quiet for several seconds, then everyone speaks at once. Choose a direction first; the scene will demand two more concrete decisions before it releases you.`}</p>
               <div className="sealed-outcome-note"><span>CONFIDENTIAL</span>{locale === "zh" ? "收益与代价已封存；事件结束后统一揭晓。" : "Costs and rewards are sealed until the scene concludes."}</div>
               <div className="event-choices hidden-outcomes">
                 {event.choices.map((choice) => {
@@ -1273,8 +1286,23 @@ export default function Game() {
               </div>
               <small className="event-footnote">{c.eventFootnote}</small>
             </>}
+            {game.eventFlow?.status === "decision" && eventChoice && eventDecisionRound && <div className="event-decision-panel" key={`${event.id}:decision:${game.eventFlow.decisionIndex}`}>
+              <div className="story-progress" aria-label={locale === "zh" ? "事件进度" : "Story progress"}>
+                {[0, 1, 2, 3, 4].map((index) => <i className={index <= (game.eventFlow?.decisionIndex ?? 0) ? "is-read" : ""} key={index} />)}
+              </div>
+              <div className="speaker-tag">{locale === "zh" ? eventDecisionRound.speaker : eventDecisionRound.speakerEn}</div>
+              <p className="decision-narrative">{locale === "zh" ? eventDecisionRound.narrative : eventDecisionRound.narrativeEn}</p>
+              <h3>{locale === "zh" ? eventDecisionRound.prompt : eventDecisionRound.promptEn}</h3>
+              <div className="event-decision-options">
+                {eventDecisionRound.options.map((option) => <button type="button" key={option.id} onClick={() => dispatch({ type: "CHOOSE_EVENT_DECISION", optionId: option.id })}>
+                  <strong>{locale === "zh" ? option.label : option.labelEn}</strong>
+                  <span>{locale === "zh" ? "继续这个故事 · 后果仍然未知" : "Continue this story · outcome remains hidden"}</span>
+                </button>)}
+              </div>
+              <small className="event-footnote">{locale === "zh" ? `场景决策 ${(game.eventFlow.decisionIndex ?? 0) + 1} / 2` : `Scene decision ${(game.eventFlow.decisionIndex ?? 0) + 1} / 2`}</small>
+            </div>}
             {game.eventFlow?.status === "dialogue" && eventChoice && eventBeat && <div className="event-dialogue-panel" key={`${event.id}:${game.eventFlow.beatIndex}`}>
-              <div className="dialogue-progress">{eventDialogue.map((_beat, index) => <i className={index <= (game.eventFlow?.beatIndex ?? 0) ? "is-read" : ""} key={index} />)}</div>
+              <div className="story-progress">{[0, 1, ...eventDialogue.map((_beat, index) => index + 2)].map((step) => <i className={step <= (game.eventFlow?.beatIndex ?? 0) + 2 ? "is-read" : ""} key={step} />)}</div>
               <div className="speaker-tag">{locale === "zh" ? eventBeat.speaker : eventBeat.speakerEn ?? eventBeat.speaker}</div>
               <blockquote>{locale === "zh" ? eventBeat.text : eventBeat.textEn ?? eventBeat.text}</blockquote>
               {(eventBeat.aside || eventBeat.asideEn) && <p>{locale === "zh" ? eventBeat.aside : eventBeat.asideEn ?? eventBeat.aside}</p>}
@@ -1287,6 +1315,10 @@ export default function Game() {
               <small>{locale === "zh" ? "事件结算报告" : "EVENT RESOLUTION REPORT"}</small>
               <h3>{eventChoiceText(event, eventChoice, "label", locale)}</h3>
               <p>{eventChoiceText(event, eventChoice, "result", locale)}</p>
+              {eventDecisionTrail.length > 0 && <div className="event-decision-trail">
+                <small>{locale === "zh" ? "你的事件路径" : "YOUR STORY PATH"}</small>
+                {eventDecisionTrail.map((option, index) => <p key={option.id}><b>{index + 1}</b><span>{locale === "zh" ? option.label : option.labelEn}</span><em>{locale === "zh" ? option.response : option.responseEn}</em></p>)}
+              </div>}
               <div className="event-outcome-chips">
                 {eventOutcomeParts(game, eventChoice, locale).map((part, index) => <span className={`is-${part.tone}`} key={`${part.text}:${index}`}>{part.text}</span>)}
               </div>

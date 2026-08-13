@@ -55,7 +55,7 @@ Each day asks uncomfortable questions:
 2. **Read the review.** Every comment offers Full Verification, Narrow the Claim, and Transparent Response routes.
 3. **Match capabilities.** Cards advance only the route steps they actually support: baseline comparison, statistics, data integrity, external validation, calibration, documentation, claim framing, and more.
 4. **Build the deck.** Resolve comments to draft new cards, upgrade actions, and earn relics that alter the rules of the run.
-5. **Live with the consequences.** Story-event rewards and costs remain sealed until you choose, play through 1–3 dialogue beats, and open the outcome envelope.
+5. **Live with the consequences.** Story-event rewards and costs remain sealed while you choose an approach, make two follow-up decisions inside the scene, play through the resulting dialogue, and finally open the outcome envelope.
 6. **Read the submission timeline.** Important reviews, rewards, events, stage transitions, and editorial decisions are recorded separately from the short action log.
 
 ## Campaign setup
@@ -89,9 +89,10 @@ Events are short academic-comedy stories rather than immediate stat popups:
 
 1. A lab outage, maintenance window, advisor interruption, data shift, coauthor crisis, or equally plausible disaster occurs.
 2. You see the choices, but not their numerical rewards or costs.
-3. Your decision locks and the scene unfolds through 1–3 dialogue beats.
-4. The result report reveals the **actual applied changes**, including caps, relic protection, conditions, card additions or removals, and upgrades.
-5. The decision enters the persistent submission timeline.
+3. Your first decision locks the broad approach; two contextual follow-up choices determine how the conversation and response actually unfold.
+4. The event becomes a compact story with readable scene-setting, character dialogue, reactions, and a final narrative beat.
+5. The result report reveals the **actual applied changes**, including the hidden effects of all three decisions, caps, relic protection, conditions, card additions or removals, and upgrades.
+6. The full decision path enters the persistent submission timeline.
 
 ## Languages
 
@@ -131,7 +132,7 @@ Your language preference is stored locally in the browser.
 
 你需要在截止日期前管理 GPU、经费、专注、精神状态和撤稿风险，并处理与卡牌能力直接关联的审稿意见。每条意见提供三条解决路线；只有真正匹配所需能力的卡牌才能推进对应步骤。
 
-事件选择不会提前显示收益。做出决定后会展开 1–3 轮对话，最后才显示经过遗物保护和数值上限修正后的真实结算，并写入投稿时间线。
+事件选择不会提前显示收益。你会先选择总体处理方向，再在故事中连续做出两次情境决策；人物对话和现场反应会随路径展开，最后才显示经过遗物保护、三次选择和数值上限修正后的真实结算，并把完整路径写入投稿时间线。
 
 游戏包含 528 张行动卡、160 条审稿意见、256 个互动故事事件、20 种论文类型、48 件遗物、5 档难度、6 种周期和 16 种结局。支持自动存档、三个手动存档槽、铁人模式、本地最高分和单文件离线游玩。
 

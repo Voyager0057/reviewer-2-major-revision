@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { EVENTS } from "../app/game/data";
 import { createGame } from "../app/game/engine";
 import {
   deleteManualRun,
@@ -107,6 +108,34 @@ test("a prerelease direct-state slot remains readable", () => {
     storage.setItem("reviewer2:manual-save:v1:2", JSON.stringify(state));
     assert.deepEqual(loadManualRun(2), JSON.parse(JSON.stringify(expected)));
     assert.equal(listManualRuns()[0]?.savedAt, 0);
+  } finally {
+    removeWindow();
+  }
+});
+
+test("a story event can be saved between its two follow-up decisions", () => {
+  withStorage();
+  try {
+    const base = createGame("method", 405);
+    const event = EVENTS[0];
+    const choice = event.choices[0];
+    const state = {
+      ...base,
+      phase: "event" as const,
+      activeEventId: event.id,
+      rewardOffers: [],
+      rewardReason: null,
+      eventFlow: {
+        eventId: event.id,
+        choiceId: choice.id,
+        beatIndex: 0,
+        status: "decision" as const,
+        decisionIndex: 1,
+        decisionIds: ["room-owners"],
+      },
+    };
+    assert.ok(saveManualRun(2, state));
+    assert.deepEqual(loadManualRun(2)?.eventFlow, state.eventFlow);
   } finally {
     removeWindow();
   }

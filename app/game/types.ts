@@ -251,6 +251,26 @@ export interface EventDialogueBeat {
   asideEn?: string;
 }
 
+export interface EventDecisionOption {
+  id: string;
+  label: string;
+  labelEn: string;
+  response: string;
+  responseEn: string;
+  delta: Delta;
+}
+
+export interface EventDecisionRound {
+  id: string;
+  speaker: string;
+  speakerEn: string;
+  narrative: string;
+  narrativeEn: string;
+  prompt: string;
+  promptEn: string;
+  options: [EventDecisionOption, EventDecisionOption];
+}
+
 export interface EventDef {
   id: string;
   icon: string;
@@ -352,7 +372,9 @@ export interface EventFlowState {
   eventId: string;
   choiceId: string | null;
   beatIndex: number;
-  status: "choice" | "dialogue" | "reveal";
+  status: "choice" | "decision" | "dialogue" | "reveal";
+  decisionIndex?: number;
+  decisionIds?: string[];
   before?: EventOutcomeSnapshot;
 }
 
@@ -412,6 +434,7 @@ export type GameAction =
   | { type: "PLAY_CARD"; instanceId: number }
   | { type: "END_TURN"; expectedTurn: number }
   | { type: "CHOOSE_EVENT"; eventId: string; choiceId: string }
+  | { type: "CHOOSE_EVENT_DECISION"; optionId: string }
   | { type: "ADVANCE_EVENT" }
   | { type: "COMPLETE_EVENT" }
   | { type: "CHOOSE_REWARD"; offerId: string }
