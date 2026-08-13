@@ -1,10 +1,13 @@
 "use client";
 
-import { useMemo } from "react";
-import { METRICS, METRIC_META, ROLE_BY_ID, ROLES } from "./data";
-import { LANGUAGE_OPTIONS, localizedText, roleText } from "./i18n";
+import { useMemo, useState } from "react";
+import { CARDS, COMMENTS, COMMENT_BY_ID, EVENTS, EVENT_BY_ID, METRICS, METRIC_META, RELICS, ROLE_BY_ID, ROLES } from "./data";
+import { ENDING_IDS } from "./engine";
+import { LANGUAGE_OPTIONS, UI_COPY, eventTitle, localizedText, roleText } from "./i18n";
 import { CAMPAIGN_LENGTHS, DIFFICULTIES, campaignLengthFor, difficultyFor, resolveCampaignConfig } from "./settings";
-import type { ManualSaveMetadata, ManualSaveSlot } from "./storage";
+import type { CareerProfile } from "./career";
+import type { GamePreferences } from "./preferences";
+import type { BestRun, ManualSaveMetadata, ManualSaveSlot } from "./storage";
 import type { GameState, Locale, RunSetup } from "./types";
 
 function t(locale: Locale, zh: string, en: string) {
@@ -246,7 +249,7 @@ export function TimelineDrawer({ game, locale, onClose }: { game: GameState; loc
   );
 }
 
-export function PauseModal({ locale, game, onContinue, onSave, onLoad, onTimeline, onHelp, onTitle }: {
+export function PauseModal({ locale, game, onContinue, onSave, onLoad, onTimeline, onHelp, onSettings, onTitle }: {
   locale: Locale;
   game: GameState;
   onContinue: () => void;
@@ -254,6 +257,7 @@ export function PauseModal({ locale, game, onContinue, onSave, onLoad, onTimelin
   onLoad: () => void;
   onTimeline: () => void;
   onHelp: () => void;
+  onSettings: () => void;
   onTitle: () => void;
 }) {
   return <div className="modal-backdrop pause-backdrop"><section className="pause-dialog" role="dialog" aria-modal="true">
@@ -264,8 +268,171 @@ export function PauseModal({ locale, game, onContinue, onSave, onLoad, onTimelin
       <button type="button" onClick={onSave} disabled={game.campaign.ironman}>{game.campaign.ironman ? t(locale, "铁人模式：不可手动存档", "Ironman: manual saves disabled") : t(locale, "保存到档案槽", "Save to archive slot")}</button>
       <button type="button" onClick={onLoad} disabled={game.campaign.ironman}>{game.campaign.ironman ? t(locale, "铁人模式：不可回档", "Ironman: loading disabled") : t(locale, "读取档案槽", "Load an archive slot")}</button>
       <button type="button" onClick={onTimeline}>{t(locale, "查看投稿时间线", "View submission timeline")}</button>
-      <button type="button" onClick={onHelp}>{t(locale, "玩法与结局说明", "Rules and endings")}</button>
+      <button type="button" onClick={onHelp}>{t(locale, "研究生生存手册", "Graduate survival manual")}</button>
+      <button type="button" onClick={onSettings}>{t(locale, "调整实验室参数", "Tune the laboratory")}</button>
       <button type="button" className="return-title" onClick={onTitle}>{t(locale, "保存并返回主菜单", "Save & return to title")}</button>
     </div>
   </section></div>;
+}
+
+export type MainMenuView = "desk" | "archive" | "help" | "settings" | "credits";
+
+const FAILED_ENDINGS = new Set(["desk_reject", "rejected", "burnout", "retracted"]);
+
+function endingLabel(id: string) {
+  return id.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function PreferenceToggle({ checked, label, detail, onChange }: { checked: boolean; label: string; detail: string; onChange: (checked: boolean) => void }) {
+  return <label className={`preference-toggle ${checked ? "is-on" : ""}`}>
+    <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+    <span className="preference-switch"><i /></span>
+    <span><strong>{label}</strong><small>{detail}</small></span>
+  </label>;
+}
+
+export function SettingsPanel({ locale, preferences, soundOn, onPreference, onSound, onLocale, onResetPreferences, onExportArchive, onResetArchive }: {
+  locale: Locale;
+  preferences: GamePreferences;
+  soundOn: boolean;
+  onPreference: (key: keyof GamePreferences, value: boolean) => void;
+  onSound: (value: boolean) => void;
+  onLocale: (locale: Locale) => void;
+  onResetPreferences?: () => void;
+  onExportArchive?: () => void;
+  onResetArchive?: () => void;
+}) {
+  return <section className="menu-document settings-document">
+    <header><p className="eyebrow">LABORATORY CONTROL PANEL</p><h2>{t(locale, "调整实验室参数", "Tune the Laboratory")}</h2><p>{t(locale, "这些设置对主菜单和正在进行的返修同时生效。审稿难度仍然不能在中途偷偷修改。", "These preferences affect both the title screen and active revisions. Review difficulty still cannot be quietly changed mid-run.")}</p></header>
+    <div className="settings-group">
+      <h3>{t(locale, "语言与声音", "Language & sound")}</h3>
+      <label className="settings-language"><span>{t(locale, "界面语言", "Interface language")}</span><LanguageSelector locale={locale} onChange={onLocale} /></label>
+      <PreferenceToggle checked={soundOn} onChange={onSound} label={t(locale, "实验室音效", "Laboratory sound")} detail={t(locale, "卡牌、盖章和错误提示音。", "Card, stamp, and warning sounds.")} />
+    </div>
+    <div className="settings-group">
+      <h3>{t(locale, "显示与可访问性", "Display & accessibility")}</h3>
+      <PreferenceToggle checked={preferences.reducedMotion} onChange={(value) => onPreference("reducedMotion", value)} label={t(locale, "减少动画", "Reduce motion")} detail={t(locale, "关闭纸张飞入、悬浮和环境脉冲。", "Disable paper entrances, hover travel, and ambient pulses.")} />
+      <PreferenceToggle checked={preferences.highContrast} onChange={(value) => onPreference("highContrast", value)} label={t(locale, "高对比度批注", "High-contrast annotations")} detail={t(locale, "提高正文、边框和红笔标记的可读性。", "Increase contrast for text, borders, and red annotations.")} />
+      <PreferenceToggle checked={preferences.largeText} onChange={(value) => onPreference("largeText", value)} label={t(locale, "放大正文", "Larger reading text")} detail={t(locale, "增大事件、帮助与审稿正文。", "Enlarge event, help, and review copy.")} />
+      <PreferenceToggle checked={preferences.paperTexture} onChange={(value) => onPreference("paperTexture", value)} label={t(locale, "论文纸张纹理", "Manuscript paper texture")} detail={t(locale, "保留纸张颗粒和横线。", "Keep paper grain and ruled manuscript lines.")} />
+      <PreferenceToggle checked={preferences.ambientGlow} onChange={(value) => onPreference("ambientGlow", value)} label={t(locale, "深夜显示器光晕", "Late-night monitor glow")} detail={t(locale, "主菜单背景的环境灯光。", "Ambient lighting on the title screen.")} />
+    </div>
+    <div className="settings-group">
+      <h3>{t(locale, "操作偏好", "Play preferences")}</h3>
+      <PreferenceToggle checked={preferences.compactCards} onChange={(value) => onPreference("compactCards", value)} label={t(locale, "紧凑手牌", "Compact hand")} detail={t(locale, "隐藏卡牌情景句，减少卡牌高度。", "Hide card vignettes and reduce card height.")} />
+      <PreferenceToggle checked={preferences.confirmQuestionable} onChange={(value) => onPreference("confirmQuestionable", value)} label={t(locale, "危险操作二次确认", "Confirm questionable actions")} detail={t(locale, "打出调种子、藏结果等危险牌前再问一次。", "Ask once more before seed tuning, hidden results, and similar shortcuts.")} />
+    </div>
+    <div className="settings-utilities">
+      {onResetPreferences && <button type="button" onClick={onResetPreferences}>{t(locale, "恢复默认设置", "Restore defaults")}</button>}
+      {onExportArchive && <button type="button" onClick={onExportArchive}>{t(locale, "导出投稿档案", "Export submission archive")}</button>}
+      {onResetArchive && <button type="button" className="is-danger" onClick={onResetArchive}>{t(locale, "清空历史与图鉴", "Erase history & discoveries")}</button>}
+    </div>
+  </section>;
+}
+
+function HelpPanel({ locale }: { locale: Locale }) {
+  const c = UI_COPY[locale];
+  const items = [
+    ["01", c.readComments, c.readCommentsBody],
+    ["02", c.chooseActions, c.chooseActionsBody],
+    ["03", c.consequencesTitle, c.consequencesBody],
+    ["04", t(locale, "把意见和卡牌对上", "Match the actual concern"), t(locale, "每条意见包含三条解决路线；只有提供对应能力的卡牌才推进具体步骤。", "Every comment offers three routes. Only cards providing the required capabilities advance its steps.")],
+    ["05", t(locale, "经历互动事件", "Live through story events"), t(locale, "先选择处理方法，再做两次现场决定。人物反应结束后才会看到这段经历带来的改变。", "Choose an approach, make two decisions as the scene develops, and learn what changed after the characters respond.")],
+    ["06", t(locale, "保存你的返修", "Save the revision"), t(locale, "游戏自动存档，也提供三个手动槽；铁人模式只保留防崩溃存档。", "The game autosaves and provides three manual slots. Ironman keeps crash recovery only.")],
+  ];
+  return <section className="menu-document help-document"><header><p className="eyebrow">GRADUATE SURVIVAL MANUAL</p><h2>{t(locale, "研究生生存手册", "Graduate Survival Manual")}</h2><p>{t(locale, "这里只有玩法。结局、事件和路线收藏已经搬进投稿档案室。", "Rules only. Endings, events, and route discoveries now live in the Submission Archive.")}</p></header><div className="manual-grid">{items.map(([index, title, detail]) => <article key={index}><span>{index}</span><h3>{title}</h3><p>{detail}</p></article>)}</div><div className="shortcut-strip"><kbd>1–7</kbd>{c.selectCard}<kbd>Enter</kbd>{c.playCard}<kbd>E</kbd>{c.endDay}<kbd>L</kbd>{c.showLog}<kbd>?</kbd>{c.help}</div></section>;
+}
+
+function ArchivePanel({ locale, career, saves, best, onLoad }: { locale: Locale; career: CareerProfile; saves: ManualSaveMetadata[]; best: BestRun | null; onLoad: () => void }) {
+  const [tab, setTab] = useState<"overview" | "runs" | "discoveries">("overview");
+  const completed = career.runs.length;
+  const accepted = career.runs.filter((run) => !FAILED_ENDINGS.has(run.endingId)).length;
+  const totalCards = career.runs.reduce((sum, run) => sum + run.cardsPlayed, 0);
+  const totalEvents = career.runs.reduce((sum, run) => sum + run.eventsCompleted, 0);
+  const discoveredRoutes = career.discoveries.routes.map((key) => {
+    const splitAt = key.lastIndexOf(":");
+    const comment = COMMENT_BY_ID[key.slice(0, splitAt)];
+    const route = comment?.routes?.find((item) => item.id === key.slice(splitAt + 1));
+    return route ? locale === "zh" ? route.name : route.nameEn : key;
+  });
+  return <section className="menu-document archive-document">
+    <header><div><p className="eyebrow">LOCAL SUBMISSION ARCHIVE</p><h2>{t(locale, "投稿档案室", "Submission Archive")}</h2><p>{t(locale, "这里保存论文的命运，不保存论文文件。所有记录只留在当前浏览器。", "This room stores the fate of manuscripts, not manuscript files. Everything remains in this browser.")}</p></div><button type="button" className="archive-load-button" disabled={saves.length === 0} onClick={onLoad}>{t(locale, `读取返修存档 · ${saves.length}/3`, `Load active revision · ${saves.length}/3`)}</button></header>
+    <nav className="archive-tabs"><button className={tab === "overview" ? "is-active" : ""} onClick={() => setTab("overview")}>{t(locale, "生涯统计", "Career")}</button><button className={tab === "runs" ? "is-active" : ""} onClick={() => setTab("runs")}>{t(locale, "历史战役", "Past runs")}</button><button className={tab === "discoveries" ? "is-active" : ""} onClick={() => setTab("discoveries")}>{t(locale, "研究图鉴", "Discoveries")}</button></nav>
+    {tab === "overview" && <><div className="career-stat-grid">
+      <article><small>{t(locale, "完成投稿", "Completed runs")}</small><strong>{completed}</strong><span>{accepted} {t(locale, "次活着离开", "survived")}</span></article>
+      <article><small>{t(locale, "最高分", "Best score")}</small><strong>{best?.score.toLocaleString() ?? "—"}</strong><span>{best ? `Seed ${best.seed}` : t(locale, "档案柜还很空", "The cabinet is still empty")}</span></article>
+      <article><small>{t(locale, "打出行动卡", "Cards played")}</small><strong>{totalCards}</strong><span>{t(locale, "每一张都写进了回复信", "every one entered the rebuttal")}</span></article>
+      <article><small>{t(locale, "处理事件", "Events handled")}</small><strong>{totalEvents}</strong><span>{t(locale, "服务器仍未道歉", "the server has not apologized")}</span></article>
+    </div><div className="archive-progress-list">
+      <p><span>{t(locale, "结局档案", "Endings")}</span><b>{career.discoveries.endings.length}/{ENDING_IDS.length}</b><i style={{ width: `${career.discoveries.endings.length / ENDING_IDS.length * 100}%` }} /></p>
+      <p><span>{t(locale, "事件记录", "Events")}</span><b>{career.discoveries.events.length}/{EVENTS.length}</b><i style={{ width: `${career.discoveries.events.length / EVENTS.length * 100}%` }} /></p>
+      <p><span>{t(locale, "解决路线", "Response routes")}</span><b>{career.discoveries.routes.length}/{COMMENTS.length * 3}</b><i style={{ width: `${career.discoveries.routes.length / (COMMENTS.length * 3) * 100}%` }} /></p>
+      <p><span>{t(locale, "行动卡", "Action cards")}</span><b>{career.discoveries.cards.length}/{CARDS.length}</b><i style={{ width: `${career.discoveries.cards.length / CARDS.length * 100}%` }} /></p>
+    </div></>}
+    {tab === "runs" && <div className="career-run-list">{career.runs.length === 0 ? <div className="empty-archive"><b>∅</b><h3>{t(locale, "还没有归档的 Decision Letter", "No decision letters filed yet")}</h3><p>{t(locale, "完成第一局后，论文会自动装订并送到这里。", "Finish a run and its manuscript will be bound and placed here.")}</p></div> : career.runs.map((run) => <article key={run.id}><div className="run-spine"><i>{run.stamp}</i><small>{new Date(run.finishedAt).toLocaleDateString()}</small></div><div><small>{ROLE_BY_ID[run.roleId]?.en} · Seed {run.seed}</small><h3>{locale === "zh" ? run.endingTitle : run.endingTitleEn}</h3><p>{run.resolved}/{run.target} {t(locale, "条意见", "comments")} · {run.eventsCompleted} {t(locale, "个事件", "events")} · Risk {run.finalRisk}%</p></div><strong>{run.score.toLocaleString()}</strong></article>)}</div>}
+    {tab === "discoveries" && <div className="discovery-sections">
+      <section><h3>{t(locale, "结局档案", "Decision letters")}</h3><div className="ending-cabinet">{ENDING_IDS.map((id, index) => { const unlocked = career.discoveries.endings.includes(id); return <span className={unlocked ? "is-unlocked" : ""} key={id}><b>{unlocked ? endingLabel(id) : "REDACTED"}</b><small>{unlocked ? `FILE ${String(index + 1).padStart(2, "0")}` : "? ? ?"}</small></span>; })}</div></section>
+      <section><h3>{t(locale, "最近发现的事件", "Recently discovered events")}</h3><div className="discovery-tags">{career.discoveries.events.slice(-14).reverse().map((id) => <span key={id}>{eventTitle(EVENT_BY_ID[id], locale)}</span>)}{career.discoveries.events.length === 0 && <em>{t(locale, "第一场危机正在路上。", "The first crisis is already on its way.")}</em>}</div></section>
+      <section><h3>{t(locale, "走过的解决路线", "Response routes taken")}</h3><div className="discovery-tags">{discoveredRoutes.slice(-18).reverse().map((name, index) => <span key={`${name}:${index}`}>{name}</span>)}{discoveredRoutes.length === 0 && <em>{t(locale, "尚未留下路线记录。", "No route has entered the record.")}</em>}</div></section>
+      <section className="collection-summary"><span>{career.discoveries.roles.length}/{ROLES.length} {t(locale, "论文类型", "paper types")}</span><span>{career.discoveries.relics.length}/{RELICS.length} {t(locale, "遗物", "relics")}</span><span>{career.discoveries.comments.length}/{COMMENTS.length} {t(locale, "审稿意见", "comments")}</span></section>
+    </div>}
+  </section>;
+}
+
+function CreditsPanel({ locale }: { locale: Locale }) {
+  return <section className="menu-document credits-document"><header><p className="eyebrow">AUTHORS & ACKNOWLEDGEMENTS</p><h2>{t(locale, "作者与致谢", "Authors & Acknowledgements")}</h2><p>{t(locale, "献给所有在截止日期前发现最后一个实验其实跑错了的人。", "For everyone who discovered, just before the deadline, that the final experiment used the wrong split.")}</p></header><div className="credit-paper"><p>Reviewer #2: Major Revision</p><h3>{t(locale, "一款学术生存卡牌 Roguelike", "An academic-survival deckbuilding roguelike")}</h3><dl><div><dt>{t(locale, "制作与维护", "Created & maintained by")}</dt><dd>Voyager0057</dd></div><div><dt>{t(locale, "代码与反馈", "Source & feedback")}</dt><dd><a href="https://github.com/Voyager0057/reviewer-2-major-revision" target="_blank" rel="noreferrer">GitHub Repository</a> · <a href="https://github.com/Voyager0057/reviewer-2-major-revision/issues" target="_blank" rel="noreferrer">Issue Tracker</a></dd></div><div><dt>{t(locale, "特别感谢", "Special thanks")}</dt><dd>{t(locale, "深夜 GPU 队列、失控的 LaTeX 表格，以及那句永恒的 Looks good to me。", "Late-night GPU queues, unruly LaTeX tables, and the immortal phrase “Looks good to me.”")}</dd></div></dl><pre>{`@game{reviewer2_major_revision,\n  title = {Reviewer #2: Major Revision},\n  note = {No reviewers were satisfied during development}\n}`}</pre></div></section>;
+}
+
+export function MainMenu({ locale, view, savedRun, saves, career, best, soundOn, preferences, exitNotice, onView, onContinue, onNew, onLoad, onHelp, onSettings, onExit, onLocale, onSound, onPreference, onResetPreferences, onExportArchive, onResetArchive }: {
+  locale: Locale;
+  view: MainMenuView;
+  savedRun: GameState | null;
+  saves: ManualSaveMetadata[];
+  career: CareerProfile;
+  best: BestRun | null;
+  soundOn: boolean;
+  preferences: GamePreferences;
+  exitNotice: boolean;
+  onView: (view: MainMenuView) => void;
+  onContinue: () => void;
+  onNew: () => void;
+  onLoad: () => void;
+  onHelp: () => void;
+  onSettings: () => void;
+  onExit: () => void;
+  onLocale: (locale: Locale) => void;
+  onSound: (value: boolean) => void;
+  onPreference: (key: keyof GamePreferences, value: boolean) => void;
+  onResetPreferences: () => void;
+  onExportArchive: () => void;
+  onResetArchive: () => void;
+}) {
+  const nav = [
+    { id: "continue", icon: "▶", label: t(locale, "继续抢救论文", "Continue the Revision"), detail: savedRun ? t(locale, `还剩 ${savedRun.resources.days} 天`, `${savedRun.resources.days} days remain`) : t(locale, "暂无自动存档", "No autosave on file"), action: onContinue, disabled: !savedRun },
+    { id: "new", icon: "+", label: t(locale, "再投一篇试试", "Submit Another Paper"), detail: t(locale, "配置一场新的学术危机", "Configure a new academic crisis"), action: onNew },
+    { id: "archive", icon: "▤", label: t(locale, "投稿档案室", "Submission Archive"), detail: t(locale, `${career.runs.length} 局历史 · ${career.discoveries.endings.length} 个结局`, `${career.runs.length} runs · ${career.discoveries.endings.length} endings`), action: () => onView("archive") },
+    { id: "help", icon: "?", label: t(locale, "研究生生存手册", "Graduate Survival Manual"), detail: t(locale, "只讲怎么活下来", "Rules for staying alive"), action: onHelp },
+    { id: "settings", icon: "⌘", label: t(locale, "调整实验室参数", "Tune the Laboratory"), detail: t(locale, "显示、声音与操作偏好", "Display, sound, and play preferences"), action: onSettings },
+    { id: "credits", icon: "§", label: t(locale, "作者与致谢", "Authors & Acknowledgements"), detail: t(locale, "联系方式与特别感谢", "Contact and special thanks"), action: () => onView("credits") },
+    { id: "exit", icon: "☾", label: t(locale, "今天先到这里", "Leave the Lab"), detail: t(locale, "保存，然后关灯", "Save, then turn out the lights"), action: onExit },
+  ];
+  return <main className={`app-shell title-menu-shell view-${view}`} id="main-menu">
+    <div className="title-ambient" aria-hidden="true" />
+    <aside className="title-menu-sidebar">
+      <button type="button" className="title-brand" onClick={() => onView("desk")}><span>R2</span><strong>Reviewer #2<small>MAJOR REVISION</small></strong></button>
+      <nav>{nav.map((item) => <button type="button" key={item.id} disabled={item.disabled} className={(view === item.id || (view === "desk" && item.id === (savedRun ? "continue" : "new"))) ? "is-active" : ""} onClick={item.action}><i>{item.icon}</i><span><strong>{item.label}</strong><small>{item.detail}</small></span></button>)}</nav>
+      <footer><LanguageSelector locale={locale} onChange={onLocale} compact /><span>v4.1 · ARCHIVE UPDATE</span></footer>
+    </aside>
+    <section className="title-menu-content">
+      {view === "desk" && <div className="lab-hero">
+        <div className="lab-scene" aria-hidden="true"><div className="office-window"><i /><i /><i /></div><div className="office-monitor"><div className="monitor-bar">MR-2026-042 · REVISION</div><div className="monitor-copy"><b>Reviewer #2</b><span>Major Revision</span><em>Please add more experiments.</em><i /><i /><i /></div><div className="monitor-stand" /></div><div className="paper-stack"><i /><i /><i /><span>R4</span></div><div className="coffee-cup">☕</div><div className="gpu-tower"><i /><i /><i /><b>GPU</b></div></div>
+        <div className="hero-docket"><p className="eyebrow">ACADEMIC SURVIVAL DECKBUILDER</p><h1>{savedRun ? t(locale, "返修还没有结束。", "The revision is still alive.") : t(locale, "论文能不能收，先看你能不能活到截止日。", "Before the paper survives review, survive the deadline.")}</h1><p>{savedRun ? t(locale, `自动存档停在第 ${savedRun.turn} 天：已解决 ${savedRun.resolved}/${savedRun.target} 条意见，Reviewer #2 仍在输入。`, `Autosave waits on day ${savedRun.turn}: ${savedRun.resolved}/${savedRun.target} comments resolved, and Reviewer #2 is still typing.`) : t(locale, "有限的 GPU、无限的审稿意见，以及一套会记住每次失败的投稿档案。", "Finite GPUs, infinite reviewer comments, and a submission archive that remembers every failure.")}</p><div className="hero-stat-row"><span><small>{t(locale, "最高分", "High score")}</small><strong>{best?.score.toLocaleString() ?? "—"}</strong></span><span><small>{t(locale, "已发现事件", "Events found")}</small><strong>{career.discoveries.events.length}/{EVENTS.length}</strong></span><span><small>{t(locale, "结局档案", "Endings filed")}</small><strong>{career.discoveries.endings.length}/{ENDING_IDS.length}</strong></span></div></div>
+        {exitNotice && <div className="lights-out-note"><b>{t(locale, "灯已经关了。", "The lab lights are off.")}</b><span>{t(locale, "自动存档已完成，现在可以安心关闭标签页。", "Autosave is complete. It is safe to close this tab.")}</span></div>}
+      </div>}
+      {view === "archive" && <ArchivePanel locale={locale} career={career} saves={saves} best={best} onLoad={onLoad} />}
+      {view === "help" && <HelpPanel locale={locale} />}
+      {view === "settings" && <SettingsPanel locale={locale} preferences={preferences} soundOn={soundOn} onPreference={onPreference} onSound={onSound} onLocale={onLocale} onResetPreferences={onResetPreferences} onExportArchive={onExportArchive} onResetArchive={onResetArchive} />}
+      {view === "credits" && <CreditsPanel locale={locale} />}
+    </section>
+  </main>;
 }

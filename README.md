@@ -39,7 +39,7 @@ Each day asks uncomfortable questions:
 
 *Choose a response route, inspect its exact capability steps, and play cards that genuinely address the review.*
 
-## The Decision Letter Update
+## The Archive Update
 
 - **528 action cards** covering experiments, statistics, writing, reproducibility, collaboration, and questionable shortcuts, each with a short research-life vignette
 - **160 reviewer comments** with three response routes and explicit capability requirements
@@ -47,7 +47,10 @@ Each day asks uncomfortable questions:
 - **20 manuscript archetypes**, each with a different starting deck, passive ability, and reviewer weakness
 - **48 research relics** and **40 revision tasks**
 - **16 endings**, including Best Paper, Open Science Hero, Replication Legend, Clean Review, speedrun, last-minute upload, Minor Revision, Major Revision, R&R, rejection, burnout, and retraction
-- Autosave, three manual save slots, Ironman mode, deterministic seeds, local high scores, and shareable ending cards
+- A game-style title screen with a left command menu and an animated late-night laboratory
+- A persistent **Submission Archive** for past runs, career statistics, discovered response routes, events, relics, cards, and endings
+- Shared main-menu and in-game settings for motion, contrast, reading size, paper texture, card density, sound, ambient light, and dangerous-action confirmation
+- Autosave, three manual save slots, Ironman mode, deterministic seeds, exportable career history, local high scores, and shareable ending cards
 
 ## How a run works
 
@@ -114,6 +117,8 @@ Your language preference is stored locally in the browser.
 - The pause menu provides three independent manual archive slots.
 - Save metadata shows manuscript type, progress, days remaining, difficulty, campaign length, timestamp, and seed.
 - Ironman disables manual saving and loading while retaining crash recovery.
+- Completed runs enter a separate career archive. It tracks aggregate statistics and discovered content without storing or uploading manuscript files.
+- Career history can be exported as JSON or erased independently without deleting an active run.
 - Saves and high scores stay in local browser storage. No manuscript, research data, or personal information is uploaded.
 - Online and offline editions normally have separate save storage.
 
@@ -134,7 +139,9 @@ Your language preference is stored locally in the browser.
 
 事件会用实验室故障、导师与合作者、数据调查、投稿行政四组论文风插图建立场景。你先决定怎么处理，再随着人物对话和现场变化连续做出两次更具体的选择；故事结尾才自然显露后果，并把完整经历写进投稿时间线。每张手牌也新增了一句双语科研生活小故事。
 
-游戏包含 528 张行动卡、160 条审稿意见、256 个互动故事事件、20 种论文类型、48 件遗物、5 档难度、6 种周期和 16 种结局。支持自动存档、三个手动存档槽、铁人模式、本地最高分和单文件离线游玩。
+主菜单采用左侧游戏选项、右侧动态深夜实验室的布局。投稿档案室会记录历史战役、生涯统计，以及发现过的解决路线、事件、卡牌、遗物和结局。帮助页面只保留玩法说明；显示、声音、动画、字号、卡面密度和危险操作确认可以在主菜单与游戏内共同调整。
+
+游戏包含 528 张行动卡、160 条审稿意见、256 个互动故事事件、20 种论文类型、48 件遗物、5 档难度、6 种周期和 16 种结局。支持自动存档、三个手动存档槽、铁人模式、可导出的本地战役档案、本地最高分和单文件离线游玩。
 
 - [在线开始游戏](https://voyager0057.github.io/reviewer-2-major-revision/)
 - [下载单文件离线版](https://github.com/Voyager0057/reviewer-2-major-revision/raw/refs/heads/main/Reviewer-2-Major-Revision.html)

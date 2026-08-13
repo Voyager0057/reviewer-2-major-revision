@@ -8,7 +8,7 @@ const BASE_UI_COPY = {
     menuTitle: "论文能不能收，先看你能不能活到截止日。",
     menuDescription: "从精简牌组起步，在评审途中选择新卡、升级行动、收集遗物并承受持续状态。正规操作会慢慢变强，危险捷径会让数字立刻好看——直到撤稿风险追上你。",
     start: "开始完整投稿战役", continue: "继续 Revision", daysLeft: "天", localHigh: "本地最高分", mayMeet: "行动卡池", hiddenBoss: "528 张卡", dangerous: "互动故事池", consequences: "256 个事件",
-    tagline: "5 档难度、6 种周期、16 个结局；每次投稿都有不同的故事。", version: "v4.0 · The Decision Letter Update",
+    tagline: "5 档难度、6 种周期、16 个结局；每次投稿都有不同的故事。", version: "v4.1 · The Archive Update",
     selectManuscript: "选择论文流派", chooseManuscript: "选择你的论文", back: "返回", roleHeading: "每种论文都有优势。Reviewer #2 会找到它的弱点。", currentChoice: "当前选择", submit: "以此论文投稿",
     passive: "被动", weakness: "弱点", funding: "经费", mental: "精神", remaining: "剩余", focus: "专注", log: "打开行动记录",
     currentBoss: "当前 Boss", resolved: "已解决意见", escalations: "追加次数", yourPaper: "你的论文", hideLog: "收起记录", viewLog: "查看行动记录", actionLog: "行动记录",
@@ -32,7 +32,7 @@ const BASE_UI_COPY = {
     menuTitle: "Before the paper survives review, you have to survive the deadline.",
     menuDescription: "Start with a focused deck, draft new cards, upgrade actions, collect relics, and manage persistent conditions. Honest work compounds slowly. Questionable shortcuts look brilliant—until Retraction Risk catches up.",
     start: "Begin Full Submission Campaign", continue: "Continue Revision", daysLeft: "days", localHigh: "Local high score", mayMeet: "Action card pool", hiddenBoss: "528 cards", dangerous: "Interactive story pool", consequences: "256 events",
-    tagline: "5 difficulties, 6 campaign lengths, and 16 endings. Every submission tells a different story.", version: "v4.0 · The Decision Letter Update",
+    tagline: "5 difficulties, 6 campaign lengths, and 16 endings. Every submission tells a different story.", version: "v4.1 · The Archive Update",
     selectManuscript: "Select a Paper Archetype", chooseManuscript: "Choose your manuscript", back: "Back", roleHeading: "Every paper has strengths. Reviewer #2 will find the weakness.", currentChoice: "Current choice", submit: "Submit this manuscript",
     passive: "Passive", weakness: "Weakness", funding: "Funding", mental: "Mental", remaining: "Days", focus: "Focus", log: "Open action log",
     currentBoss: "Current Boss", resolved: "Comments resolved", escalations: "Escalations", yourPaper: "Your paper", hideLog: "Hide action log", viewLog: "View action log", actionLog: "Action log",
@@ -154,6 +154,7 @@ export function documentLanguage(locale: Locale) {
 
 const PHRASE_TRANSLATIONS: Record<ExtraLocale, Record<string, string>> = {
   ja: {
+    "Continue the Revision": "修正を続ける", "Submit Another Paper": "もう一本投稿する", "Submission Archive": "投稿アーカイブ", "Graduate Survival Manual": "大学院生サバイバルガイド", "Tune the Laboratory": "研究室設定", "Authors & Acknowledgements": "著者と謝辞", "Leave the Lab": "今日はここまで",
     "New Game · Configure Submission": "新規ゲーム · 投稿設定", "Load Archive": "アーカイブ読込", "Help & Ending Archive": "ヘルプとエンディング", "Exit Game": "ゲーム終了", "cards": "枚", "stories": "物語",
     "New Submission": "新規投稿", "Help": "ヘルプ", "Main menu": "メインメニュー", "Configure your next academic crisis": "次の学術危機を設定する",
     "Manuscript": "論文", "Review intensity": "査読強度", "Revision period": "修正期間", "Submission rules": "投稿ルール",
@@ -171,6 +172,7 @@ const PHRASE_TRANSLATIONS: Record<ExtraLocale, Record<string, string>> = {
     "Leave the email alone for a moment": "メールを少し放置する", "Continue revision": "修正を続ける", "Save to archive slot": "アーカイブに保存", "Load an archive slot": "アーカイブを読み込む", "View submission timeline": "投稿タイムラインを見る", "Rules and endings": "ルールとエンディング", "Save & return to title": "保存してタイトルへ",
   },
   ko: {
+    "Continue the Revision": "수정 계속하기", "Submit Another Paper": "논문 한 편 더 투고", "Submission Archive": "투고 보관실", "Graduate Survival Manual": "대학원생 생존 안내서", "Tune the Laboratory": "연구실 설정", "Authors & Acknowledgements": "저자 및 감사의 글", "Leave the Lab": "오늘은 여기까지",
     "New Game · Configure Submission": "새 게임 · 투고 설정", "Load Archive": "보관함 불러오기", "Help & Ending Archive": "도움말과 결말", "Exit Game": "게임 종료", "cards": "장", "stories": "개 이야기",
     "New Submission": "새 투고", "Help": "도움말", "Main menu": "메인 메뉴", "Configure your next academic crisis": "다음 학술 위기를 설정하세요",
     "Manuscript": "논문", "Review intensity": "심사 강도", "Revision period": "수정 기간", "Submission rules": "투고 규칙",
@@ -188,6 +190,7 @@ const PHRASE_TRANSLATIONS: Record<ExtraLocale, Record<string, string>> = {
     "Leave the email alone for a moment": "잠시 이메일에서 벗어나기", "Continue revision": "수정 계속", "Save to archive slot": "보관함에 저장", "Load an archive slot": "보관함 불러오기", "View submission timeline": "투고 타임라인 보기", "Rules and endings": "규칙과 결말", "Save & return to title": "저장하고 타이틀로",
   },
   es: {
+    "Continue the Revision": "Continuar la revisión", "Submit Another Paper": "Enviar otro artículo", "Submission Archive": "Archivo de envíos", "Graduate Survival Manual": "Manual de supervivencia doctoral", "Tune the Laboratory": "Ajustar el laboratorio", "Authors & Acknowledgements": "Autores y agradecimientos", "Leave the Lab": "Cerrar el laboratorio",
     "New Game · Configure Submission": "Nueva partida · Configurar envío", "Load Archive": "Cargar archivo", "Help & Ending Archive": "Ayuda y finales", "Exit Game": "Salir", "cards": "cartas", "stories": "historias",
     "New Submission": "Nuevo envío", "Help": "Ayuda", "Main menu": "Menú principal", "Configure your next academic crisis": "Configura tu próxima crisis académica",
     "Manuscript": "Manuscrito", "Review intensity": "Intensidad de revisión", "Revision period": "Periodo de revisión", "Submission rules": "Reglas del envío",

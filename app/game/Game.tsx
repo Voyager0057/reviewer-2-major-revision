@@ -3,11 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CAPABILITY_META,
-  CARDS,
   CARD_BY_ID,
   CATEGORY_META,
   EVENT_BY_ID,
-  EVENTS,
   METRICS,
   METRIC_META,
   RELIC_BY_ID,
@@ -43,6 +41,8 @@ import {
   eventTitle,
 } from "./i18n";
 import { eventIllustrationFor } from "./eventIllustrations";
+import { EMPTY_CAREER, careerExport, clearCareer, readCareer, recordCareerDiscovery, recordCompletedCareerRun } from "./career";
+import { DEFAULT_PREFERENCES, readPreferences, savePreferences } from "./preferences";
 import { DEFAULT_RUN_SETUP } from "./settings";
 import {
   clearRun,
@@ -56,8 +56,11 @@ import {
   saveRun,
 } from "./storage";
 import type { BestRun, ManualSaveMetadata, ManualSaveSlot } from "./storage";
+import type { CareerProfile } from "./career";
+import type { GamePreferences } from "./preferences";
 import type { EventChoice, GameAction, GameState, Locale, Metric, RunSetup } from "./types";
-import { LanguageSelector, NewGameSetup, PauseModal, SaveManagerModal, TimelineDrawer } from "./GameMenus";
+import { LanguageSelector, MainMenu, NewGameSetup, PauseModal, SaveManagerModal, SettingsPanel, TimelineDrawer } from "./GameMenus";
+import type { MainMenuView } from "./GameMenus";
 
 type MenuScreen = "menu" | "setup";
 type SoundKind = "paper" | "success" | "error" | "stamp";
@@ -319,6 +322,7 @@ function drawShareCard(game: GameState, canvas: HTMLCanvasElement, locale: Local
 export default function Game() {
   const [locale, setLocale] = useState<Locale>(DEFAULT_LOCALE);
   const [screen, setScreen] = useState<MenuScreen>("menu");
+  const [menuView, setMenuView] = useState<MainMenuView>("desk");
   const [selectedRole, setSelectedRole] = useState("method");
   const [runSetup, setRunSetup] = useState<RunSetup>(DEFAULT_RUN_SETUP);
   const [seedInput, setSeedInput] = useState("");
@@ -329,6 +333,9 @@ export default function Game() {
   const [pauseOpen, setPauseOpen] = useState(false);
   const [timelineOpen, setTimelineOpen] = useState(false);
   const [exitNotice, setExitNotice] = useState(false);
+  const [career, setCareer] = useState<CareerProfile>(EMPTY_CAREER);
+  const [preferences, setPreferences] = useState<GamePreferences>(DEFAULT_PREFERENCES);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [best, setBest] = useState<BestRun | null>(null);
   const [selectedCard, setSelectedCard] = useState<number | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -350,6 +357,8 @@ export default function Game() {
       setBest(readBest());
       setSavedRun(loadRun());
       setManualSaves(listManualRuns());
+      setCareer(readCareer());
+      setPreferences(readPreferences());
       try {
         const stored = window.localStorage.getItem(SOUND_KEY);
         if (stored === "off") setSoundOn(false);
@@ -367,9 +376,22 @@ export default function Game() {
   }, [locale]);
 
   useEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle("pref-reduced-motion", preferences.reducedMotion);
+    root.classList.toggle("pref-high-contrast", preferences.highContrast);
+    root.classList.toggle("pref-large-text", preferences.largeText);
+    root.classList.toggle("pref-compact-cards", preferences.compactCards);
+    root.classList.toggle("pref-no-paper-texture", !preferences.paperTexture);
+    root.classList.toggle("pref-no-ambient-glow", !preferences.ambientGlow);
+    savePreferences(preferences);
+  }, [preferences]);
+
+  useEffect(() => {
     if (!game) return;
     if (game.phase === "ended") {
       clearRun();
+      const completedCareer = recordCompletedCareerRun(game);
+      window.queueMicrotask(() => setCareer(completedCareer));
       const previousBest = readBest();
       const nextBest = commitBest(game);
       if (nextBest) {
@@ -382,6 +404,8 @@ export default function Game() {
       return;
     }
     saveRun(game);
+    const discoveredCareer = recordCareerDiscovery(game);
+    window.queueMicrotask(() => setCareer(discoveredCareer));
   }, [game]);
 
   const playSound = useCallback(
@@ -435,6 +459,26 @@ export default function Game() {
     }
   };
 
+  const changePreference = (key: keyof GamePreferences, value: boolean) => {
+    setPreferences((current) => ({ ...current, [key]: value }));
+  };
+
+  const exportCareerArchive = () => {
+    const blob = new Blob([careerExport(career)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `reviewer-2-career-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const resetCareerArchive = () => {
+    if (!window.confirm(localizedText(locale, "清空全部历史战役、事件、路线和结局发现？正在进行的存档不会删除。", "Erase all past runs, event, route, and ending discoveries? Active saves will remain."))) return;
+    clearCareer();
+    setCareer(EMPTY_CAREER);
+  };
+
   const startRun = useCallback(
     (roleId: string, seed = safeSeed(), setup: RunSetup = DEFAULT_RUN_SETUP) => {
       clearRun();
@@ -445,6 +489,7 @@ export default function Game() {
       setLogOpen(false);
       setPauseOpen(false);
       setTimelineOpen(false);
+      setSettingsOpen(false);
       setGame(createGame(roleId, seed, setup));
       playSound("paper");
     },
@@ -532,8 +577,11 @@ export default function Game() {
       playSound("error");
       return;
     }
+    const instance = game.hand.find((card) => card.instanceId === activeSelectedCard);
+    const definition = instance ? CARD_BY_ID[instance.cardId] : null;
+    if (definition?.category === "questionable" && preferences.confirmQuestionable && !window.confirm(localizedText(locale, "这张牌能让短期数字变好，也会留下审计痕迹。确定执行？", "This card may improve the short-term numbers and leave an audit trail. Play it anyway?"))) return;
     dispatch({ type: "PLAY_CARD", instanceId: activeSelectedCard });
-  }, [activeSelectedCard, dispatch, game, playSound]);
+  }, [activeSelectedCard, dispatch, game, locale, playSound, preferences.confirmQuestionable]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -555,13 +603,14 @@ export default function Game() {
       if (event.key === "Escape") {
         if (saveMode) setSaveMode(null);
         else if (timelineOpen) setTimelineOpen(false);
+        else if (settingsOpen) setSettingsOpen(false);
         else if (helpOpen) setHelpOpen(false);
         else if (pauseOpen) setPauseOpen(false);
         else if (game?.phase === "playing") setPauseOpen(true);
         setLogOpen(false);
         return;
       }
-      if (!game || game.phase !== "playing" || helpOpen || pauseOpen || timelineOpen || saveMode !== null) return;
+      if (!game || game.phase !== "playing" || helpOpen || settingsOpen || pauseOpen || timelineOpen || saveMode !== null) return;
       const number = Number(event.key);
       if (number >= 1 && number <= game.hand.length) {
         event.preventDefault();
@@ -579,7 +628,7 @@ export default function Game() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [activeSelectedCard, dispatch, game, helpOpen, pauseOpen, playSelected, saveMode, timelineOpen]);
+  }, [activeSelectedCard, dispatch, game, helpOpen, pauseOpen, playSelected, saveMode, settingsOpen, timelineOpen]);
 
   useEffect(() => {
     if (game?.phase === "ended") playSound("stamp");
@@ -629,119 +678,25 @@ export default function Game() {
   };
 
   if (!game && screen === "menu") {
-    return (
-      <main className="app-shell menu-shell">
-        <div className="desk-grid" aria-hidden="true" />
-        <div className="monitor-glow" aria-hidden="true" />
-        <header className="site-header">
-          <a className="brand-lockup" href="#main-menu" aria-label={c.home}>
-            <span className="brand-mark">R2</span>
-            <span>
-              <strong>Reviewer #2</strong>
-              <small>Major Revision</small>
-            </span>
-          </a>
-          <div className="header-actions">
-            <LanguageSelector locale={locale} onChange={changeLocale} />
-            <button type="button" className="icon-button" onClick={toggleSound} aria-label={soundOn ? c.soundOff : c.soundOn}>
-              {soundOn ? "♪" : "×♪"}
-            </button>
-            <button type="button" className="icon-button" onClick={() => setHelpOpen(true)} aria-label={c.help}>
-              ?
-            </button>
-          </div>
-        </header>
-
-        <section className="menu-stage" id="main-menu">
-          <div className="cover-wrap">
-            <article className="submission-cover">
-              <div className="paper-grain" aria-hidden="true" />
-              <p className="cover-kicker">MANUSCRIPT ID: MR-2026-042</p>
-              <h1>
-                REVIEWER <span>#2</span>
-                <small>Major Revision</small>
-              </h1>
-              <p className="cover-abstract">
-                {c.coverAbstract}
-              </p>
-              <div className="cover-meta">
-                <span>{c.runTime}</span>
-                <span>{c.browserPlay}</span>
-                <span>{c.localSave}</span>
-              </div>
-              <div className="major-stamp" aria-hidden="true">
-                MAJOR
-                <br />
-                REVISION
-              </div>
-              <div className="red-note" aria-hidden="true">
-                Please add
-                <br />
-                more experiments!
-                <span>↙</span>
-              </div>
-            </article>
-            <div className="coffee-ring" aria-hidden="true" />
-            <div className="paperclip" aria-hidden="true" />
-          </div>
-
-          <div className="menu-copy">
-            <p className="eyebrow">ACADEMIC SURVIVAL DECKBUILDER</p>
-            <h2>{c.menuTitle}</h2>
-            <p>{c.menuDescription}</p>
-            <div className="menu-actions">
-              {savedRun && (
-                <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={() => {
-                    setGame(savedRun);
-                    setSavedRun(null);
-                    playSound("paper");
-                  }}
-                >
-                  {c.continue} · {savedRun.resources.days} {c.daysLeft}
-                </button>
-              )}
-              <button type="button" className="primary-button" onClick={() => setScreen("setup")}>
-                {localizedText(locale, "新游戏 · 配置投稿", "New Game · Configure Submission")} <span aria-hidden="true">→</span>
-              </button>
-              <button type="button" className="secondary-button" disabled={manualSaves.length === 0} onClick={() => openSaveManager("load")}>
-                {localizedText(locale, `读取存档 · ${manualSaves.length}/3`, `Load Archive · ${manualSaves.length}/3`)}
-              </button>
-              <button type="button" className="secondary-button" onClick={() => setHelpOpen(true)}>
-                {localizedText(locale, "帮助与结局档案", "Help & Ending Archive")}
-              </button>
-              <button type="button" className="menu-exit-button" onClick={() => setExitNotice(true)}>
-                {localizedText(locale, "退出游戏", "Exit Game")}
-              </button>
-            </div>
-            {exitNotice && <p className="exit-notice">{localizedText(locale, "浏览器游戏无法关闭你的标签页——自动存档已完成，现在可以安心关闭页面。", "A browser game cannot close your tab. Autosave is complete; it is safe to close this page.")}</p>}
-            <div className="menu-records">
-              <span>
-                <small>{c.localHigh}</small>
-                <strong>{best ? best.score.toLocaleString() : "—"}</strong>
-              </span>
-              <span>
-                <small>{c.mayMeet}</small>
-                <strong>{CARDS.length} {localizedText(locale, "张卡", "cards")}</strong>
-              </span>
-              <span>
-                <small>{c.dangerous}</small>
-                <strong>{EVENTS.length} {localizedText(locale, "个故事", "stories")}</strong>
-              </span>
-            </div>
-          </div>
-        </section>
-
-        <footer className="menu-footer">
-          <span>{c.tagline}</span>
-          <span>{c.version}</span>
-        </footer>
+    return <>
+      <MainMenu locale={locale} view={menuView} savedRun={savedRun} saves={manualSaves} career={career} best={best} soundOn={soundOn} preferences={preferences} exitNotice={exitNotice}
+        onView={(view) => { setMenuView(view); setExitNotice(false); }}
+        onContinue={() => { if (!savedRun) return; setGame(savedRun); setSavedRun(null); playSound("paper"); }}
+        onNew={() => setScreen("setup")}
+        onLoad={() => openSaveManager("load")}
+        onHelp={() => setMenuView("help")}
+        onSettings={() => setMenuView("settings")}
+        onExit={() => { setExitNotice(true); setMenuView("desk"); }}
+        onLocale={changeLocale}
+        onSound={(value) => { if (value !== soundOn) toggleSound(); }}
+        onPreference={changePreference}
+        onResetPreferences={() => setPreferences(DEFAULT_PREFERENCES)}
+        onExportArchive={exportCareerArchive}
+        onResetArchive={resetCareerArchive}
+      />
         {helpOpen && <HelpModal locale={locale} onClose={() => setHelpOpen(false)} />}
         {saveMode && <SaveManagerModal locale={locale} mode={saveMode} game={null} saves={manualSaves} onClose={() => setSaveMode(null)} onSave={saveToSlot} onLoad={loadFromSlot} onDelete={deleteSlot} />}
-      </main>
-    );
+    </>;
   }
 
   if (!game && screen === "setup") {
@@ -1397,10 +1352,11 @@ export default function Game() {
         </div>
       )}
 
-      {pauseOpen && <PauseModal locale={locale} game={game} onContinue={() => setPauseOpen(false)} onSave={() => { setPauseOpen(false); openSaveManager("save"); }} onLoad={() => { setPauseOpen(false); openSaveManager("load"); }} onTimeline={() => { setPauseOpen(false); setTimelineOpen(true); }} onHelp={() => { setPauseOpen(false); setHelpOpen(true); }} onTitle={returnToTitle} />}
+      {pauseOpen && <PauseModal locale={locale} game={game} onContinue={() => setPauseOpen(false)} onSave={() => { setPauseOpen(false); openSaveManager("save"); }} onLoad={() => { setPauseOpen(false); openSaveManager("load"); }} onTimeline={() => { setPauseOpen(false); setTimelineOpen(true); }} onHelp={() => { setPauseOpen(false); setHelpOpen(true); }} onSettings={() => { setPauseOpen(false); setSettingsOpen(true); }} onTitle={returnToTitle} />}
       {timelineOpen && <TimelineDrawer game={game} locale={locale} onClose={() => setTimelineOpen(false)} />}
       {saveMode && <SaveManagerModal locale={locale} mode={saveMode} game={game} saves={manualSaves} onClose={() => setSaveMode(null)} onSave={saveToSlot} onLoad={loadFromSlot} onDelete={deleteSlot} />}
       {helpOpen && <HelpModal locale={locale} onClose={() => setHelpOpen(false)} />}
+      {settingsOpen && <div className="modal-backdrop settings-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setSettingsOpen(false)}><div className="in-game-settings"><button type="button" className="modal-close" onClick={() => setSettingsOpen(false)}>×</button><SettingsPanel locale={locale} preferences={preferences} soundOn={soundOn} onPreference={changePreference} onSound={(value) => { if (value !== soundOn) toggleSound(); }} onLocale={changeLocale} onResetPreferences={() => setPreferences(DEFAULT_PREFERENCES)} /></div></div>}
       <canvas className="share-canvas" ref={canvasRef} aria-hidden="true" />
     </main>
   );
@@ -1444,20 +1400,10 @@ function HelpModal({ onClose, locale }: { onClose: () => void; locale: Locale })
           </article>
           <article>
             <span>06</span>
-            <h3>{locale === "zh" ? "寻找十六种结局" : "Discover sixteen endings"}</h3>
-            <p>{locale === "zh" ? "高质量、零风险、开放科学、极速投稿、最后一分钟与隐藏合作者都有专属 Decision Letter。" : "High quality, zero risk, open science, speedruns, last-minute uploads, and the hidden coauthor each have dedicated decision letters."}</p>
+            <h3>{locale === "zh" ? "使用快捷操作" : "Use quick controls"}</h3>
+            <p>{locale === "zh" ? "数字键选择手牌，Enter 执行，E 结束今天，L 打开行动记录，Esc 暂停。" : "Use number keys to select cards, Enter to play, E to end the day, L for the action log, and Esc to pause."}</p>
           </article>
         </div>
-        <details className="ending-guide">
-          <summary>{locale === "zh" ? "查看结局线索（含轻微剧透）" : "Ending clues (light spoilers)"}</summary>
-          <div>
-            <p><b>BEST PAPER</b> {locale === "zh" ? "四项指标都极高、低风险，并积累足够精准回复。" : "Exceptional scores in every metric, low risk, and many precise replies."}</p>
-            <p><b>OPEN SCIENCE</b> {locale === "zh" ? "报告负结果，同时保持高复现和极低风险。" : "Report negative results while maintaining high reproducibility and very low risk."}</p>
-            <p><b>REPRODUCED / CLEAN</b> {locale === "zh" ? "追求满复现，或在不碰危险牌的前提下零风险接收。" : "Maximize reproducibility, or finish at zero risk without questionable cards."}</p>
-            <p><b>FAST TRACK / 23:59</b> {locale === "zh" ? "浓缩返修提前完成，或在最后一天完成。" : "Finish Espresso early, or complete the paper on its final day."}</p>
-            <p><b>MINOR / MAJOR / R&amp;R</b> {locale === "zh" ? "截止时未完全解决，但进度和论文质量达到不同门槛。" : "Reach different progress and quality thresholds when time expires."}</p>
-          </div>
-        </details>
         <div className="shortcut-list">
           <span>
             <kbd>1–6</kbd> {c.selectCard}

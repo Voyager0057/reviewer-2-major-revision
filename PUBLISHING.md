@@ -59,7 +59,7 @@ pnpm exec tsc --noEmit
 
 ```bash
 git add app offline tests package.json README.md PUBLISHING.md Reviewer-2-Major-Revision.html images.d.ts
-git commit -m "Add illustrated interactive story events"
+git commit -m "Build game-style title menu and career archive"
 git pull --rebase origin main
 git push origin main
 ```
@@ -68,12 +68,13 @@ git push origin main
 
 本次内容标识应为：
 
-- v4.0 · The Decision Letter Update
+- v4.1 · The Archive Update
 - 528 张行动卡
 - 256 个互动故事事件
 - 16 种结局
 - 5 档难度与 6 种战役周期
 - 自动存档与 3 个手动存档槽
+- 历史战役、生涯统计、路线／事件／结局图鉴与共享设置
 - 英语默认界面，可切换简体中文、日语、韩语和西班牙语
 
 ## 常见问题

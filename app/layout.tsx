@@ -22,7 +22,7 @@ export async function generateMetadata(): Promise<Metadata> {
     applicationName: "Reviewer #2: Major Revision",
     openGraph: {
       title: "Reviewer #2: Major Revision",
-      description: "Configure a manuscript and revision campaign, survive 256 hidden-outcome academic stories, and discover 16 decision-letter endings.",
+      description: "Configure a manuscript, survive 256 illustrated branching academic stories, and build a persistent archive of routes, events, and decision letters.",
       type: "website",
       locale: "en_US",
       alternateLocale: ["zh_CN", "ja_JP", "ko_KR", "es_ES"],

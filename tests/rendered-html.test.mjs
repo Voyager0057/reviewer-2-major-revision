@@ -30,12 +30,15 @@ test("server-renders the playable game entry screen", async () => {
 
   const html = await response.text();
   assert.match(html, /<title>Reviewer #2: Major Revision<\/title>/i);
-  assert.match(html, /New Game · Configure Submission/);
+  assert.match(html, /Submit Another Paper/);
+  assert.match(html, /Submission Archive/);
+  assert.match(html, /Graduate Survival Manual/);
+  assert.match(html, /Tune the Laboratory/);
+  assert.match(html, /Authors &amp; Acknowledgements/);
   assert.match(html, /ACADEMIC SURVIVAL DECKBUILDER/);
-  assert.match(html, /Local high score/);
-  assert.match(html, /528(?:<!-- -->|\s)*cards/);
-  assert.match(html, /256(?:<!-- -->|\s)*stories/);
-  assert.match(html, /16 endings/);
+  assert.match(html, /High score/);
+  assert.match(html, /0(?:<!-- -->|\s)*\/(?:<!-- -->|\s)*256/);
+  assert.match(html, /0(?:<!-- -->|\s)*\/(?:<!-- -->|\s)*16/);
   assert.match(html, /<html lang="en"/);
   assert.match(html, /og\.png/);
   assert.doesNotMatch(html, /codex-preview|Building your site|react-loading-skeleton/i);
